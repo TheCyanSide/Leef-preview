@@ -48,8 +48,8 @@
   --accent-glow: rgba(45,106,79,.25);
   --accent-soft: rgba(45,106,79,.06);
   --t1: #1a1a1e;
-  --t2: rgba(50,45,40,.7);
-  --t3: rgba(50,45,40,.55);
+  --t2: rgba(50,45,40,.78);
+  --t3: rgba(50,45,40,.72);
   --sep: rgba(50,45,40,.08);
   --danger: #e5383b;
   --blue: #2b6cb0;
@@ -104,7 +104,7 @@
 [data-theme="light"] {
   --bg: #f4f1ec; --card: #fff; --card2: #f0ede7;
   --accent: #2d6a4f; --accent-glow: rgba(45,106,79,.25); --accent-soft: rgba(45,106,79,.06);
-  --t1: #1a1a1e; --t2: rgba(50,45,40,.7); --t3: rgba(50,45,40,.55);
+  --t1: #1a1a1e; --t2: rgba(50,45,40,.78); --t3: rgba(50,45,40,.72);
   --sep: rgba(50,45,40,.08); --danger: #e5383b; --label: #5a6578;
   --blue: #2b6cb0; --teal: #1a936f; --amber: #c17f24; --purple: #7c5cbf; --coral: #d05032;
   --glass: rgba(255,255,255,.82); --glass2: rgba(255,255,255,.55);
@@ -1438,7 +1438,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app';
-const VERSION = '6.0.8';
+const VERSION = '6.0.11';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -2389,6 +2389,9 @@ function loadData() {
         }
         // Re-save with current version
         if (data.v !== VERSION) saveData();
+        // v6.0.9 BUG-002: backfill milestones for users whose milestone array is empty
+        // but who already have earned entries (from seed data or older versions).
+        backfillMilestones();
         return;
       }
     }
@@ -2403,6 +2406,8 @@ function loadData() {
     state.settings.onboardingDone = true;
     state.settings.splashSeen = true; // v5.0: skip splash for seed-data users
     saveData();
+    // v6.0.9 BUG-002: first-time seed load should also award milestones
+    backfillMilestones();
     return;
   }
 
@@ -2446,7 +2451,10 @@ function toast(msg, undoFn, type) {
 /* ═══════════════════════════════════════════════════════════
    MILESTONE SYSTEM
    ═══════════════════════════════════════════════════════════ */
-function checkMilestones() {
+// v6.0.9 BUG-002 FIX: when silent=true, award missing milestones without popping the
+// celebration modal. Used by loadData() to backfill milestones for users who imported
+// data or who haven't saved a new entry since milestones were added.
+function checkMilestones(silent) {
   const e = state.entries;
   if (!e.length) return;
   const earned = new Set(state.milestones.map(m => m.id));
@@ -2637,8 +2645,24 @@ function checkMilestones() {
       state.milestones.push({ id, achievedAt: todayStr() });
     });
     saveData();
-    const best = newMs[newMs.length - 1];
-    showMilestone(best);
+    if (!silent) {
+      const best = newMs[newMs.length - 1];
+      showMilestone(best);
+    }
+  }
+}
+
+// v6.0.9 BUG-002 FIX: backfill milestones for previously-loaded data.
+// Runs once per load, populates _lastStats via a getStats() call, then silently
+// awards any milestones the user already earned but was never credited for.
+function backfillMilestones() {
+  if (!state.entries.length) return;
+  try {
+    _statsCache = null;
+    _lastStats = getStats();
+    checkMilestones(true);
+  } catch (err) {
+    console.warn('Leef: milestone backfill failed', err);
   }
 }
 
@@ -2866,21 +2890,26 @@ function getStats() {
   });
 
   // v6.0.7: flower stats use totalFlower (grams + grams2) for multi-strain days
+  // v6.0.9 BUG-003 FIX: flower and mg trend calcs must use the SAME divisor so
+  // the two trends always point in the same direction. Previously flower excluded
+  // rest days while mg included them, so a rest day in prev7 could push flower UP
+  // but pull mg DOWN, producing "Flower 0.8g ↓6% / THC 147mg ↑10%" on Budget preset.
+  // Rule: both averages divide by 7 (or available days) — rest days count as 0 for both.
   const wg = e.filter(x => totalFlower(x) > 0);
-  const l7g = e.slice(-7).filter(x => totalFlower(x) > 0);
-  const p7g = e.slice(-14, -7).filter(x => totalFlower(x) > 0);
-  const ar = l7g.length ? l7g.reduce((s, x) => s + totalFlower(x), 0) / l7g.length : 0;
-  const ap = p7g.length ? p7g.reduce((s, x) => s + totalFlower(x), 0) / p7g.length : 0;
+  const l7all = e.slice(-7);
+  const p7all = e.slice(-14, -7);
+  const ar = l7all.length ? l7all.reduce((s, x) => s + totalFlower(x), 0) / l7all.length : 0;
+  const ap = p7all.length ? p7all.reduce((s, x) => s + totalFlower(x), 0) / p7all.length : 0;
   const trendG = ap > 0 ? Math.round((ar - ap) / ap * 100) : 0;
 
   const totMg = e.reduce((s, x) => s + calcMg(x), 0);
-  const l7all = e.slice(-7);
-  const p7all = e.slice(-14, -7);
   const avg7mg = l7all.length ? Math.round(l7all.reduce((s, x) => s + calcMg(x), 0) / l7all.length) : 0;
   const avg7mgPrev = p7all.length ? Math.round(p7all.reduce((s, x) => s + calcMg(x), 0) / p7all.length) : 0;
   const trendMg = avg7mgPrev > 0 ? Math.round((avg7mg - avg7mgPrev) / avg7mgPrev * 100) : 0;
 
-  const fw = e.slice(0, 7).filter(x => totalFlower(x) > 0);
+  // v6.0.9: first-week baseline and best-week use the same all-days rule so
+  // reductionG compares like-to-like with ar.
+  const fw = e.slice(0, 7);
   const fwAvg = fw.length ? fw.reduce((s, x) => s + totalFlower(x), 0) / fw.length : null;
   const reductionG = fwAvg > 0 && ar > 0 ? Math.round((1 - ar / fwAvg) * 100) : null;
   const fwMg = e.slice(0, 7);
@@ -2889,9 +2918,9 @@ function getStats() {
 
   let bestWeek = null, bestWeekMg = null;
   for (let i = 6; i < e.length; i++) {
-    const wSlice = e.slice(i - 6, i + 1).filter(x => totalFlower(x) > 0);
+    const wSlice = e.slice(i - 6, i + 1);
     if (wSlice.length) { const avg = wSlice.reduce((s, x) => s + totalFlower(x), 0) / wSlice.length; if (bestWeek === null || avg < bestWeek) bestWeek = avg; }
-    const avgMg = Math.round(e.slice(i - 6, i + 1).reduce((s, x) => s + calcMg(x), 0) / 7);
+    const avgMg = Math.round(wSlice.reduce((s, x) => s + calcMg(x), 0) / 7);
     if (bestWeekMg === null || avgMg < bestWeekMg) bestWeekMg = avgMg;
   }
 
@@ -2950,6 +2979,9 @@ function getStats() {
   // This is more forgiving than "one freeze per streak" — gives a steady safety net
   // FIX: never apply a freeze to dates BEFORE the user's first entry — those aren't
   // missed days, the user simply hadn't started tracking yet.
+  // v6.0.9 BUG-001 FIX: today-not-logged-yet does NOT invalidate the streak.
+  // Previously, opening the app before logging in the morning returned streak=0
+  // even with a 113-day perfect history. Now we skip today and count the run of past days.
   const today = new Date(todayStr());
   let streak = 0;
   const freezeDates = []; // dates where we used a freeze
@@ -2962,8 +2994,12 @@ function getStats() {
     if (firstEntryDate && ds < firstEntryDate) break;
     if (dateSet.has(ds)) {
       streak++;
-    } else if (i > 0) {
-      // Check if any freeze was used in the last 7 days BEFORE this point
+    } else if (i === 0) {
+      // Today not logged yet — don't increment, but don't break either.
+      // Streak counts the unbroken run of past days that ARE logged.
+      continue;
+    } else {
+      // Previous day not logged — try to apply a freeze
       const recentFreezes = freezeDates.filter(f => {
         const fd = new Date(f);
         const diff = (d - fd) / MS_PER_DAY;
@@ -2975,8 +3011,6 @@ function getStats() {
       } else {
         break; // Already used a freeze recently — streak breaks
       }
-    } else {
-      break;
     }
   }
   const frozenUsed = freezeDates.length;
@@ -3369,11 +3403,26 @@ function renderDash(s) {
     if (isBreak) {
       // Quit / break — show day counter
       const isQuit = !goal.breakEnd;
+      // v6.0.10: if quit was backdated during onboarding, reflect the real day count
+      // in the empty-state hero so it doesn't lie ("2 weeks in" showing as "Day 1 starts today")
+      let eBig = 0;
+      let eMsg = 'Day 1 starts today \ud83c\udf31';
+      let eBtn = 'Log day 1';
+      if (isQuit && goal.breakStart) {
+        const bs = new Date(goal.breakStart + 'T12:00:00');
+        const now = new Date(todayStr() + 'T12:00:00');
+        const elapsed = Math.max(0, Math.floor((now - bs) / MS_PER_DAY));
+        if (elapsed > 0) {
+          eBig = elapsed + 1;  // inclusive convention, matches line ~2795
+          eMsg = `You're ${eBig} days in \ud83c\udf31`;
+          eBtn = 'Log today';
+        }
+      }
       heroHtml = `<div class="hero-card" style="padding:32px 24px;background:linear-gradient(145deg, rgba(30,176,122,.15) 0%, rgba(43,108,176,.05) 60%, transparent 100%)">
         <div style="font-size:12px;font-weight:500;color:var(--accent);margin-bottom:10px;letter-spacing:.5px;text-transform:uppercase">${isQuit ? 'Clear and sober' : 'Your break'}</div>
-        <div style="font-size:56px;font-weight:800;color:var(--t1);line-height:1;letter-spacing:-1px">0<span style="font-size:20px;font-weight:500;letter-spacing:0"> days</span></div>
-        <div style="font-size:14px;font-weight:600;color:var(--teal);margin-top:10px">Day 1 starts today \ud83c\udf31</div>
-        <button class="btn-primary" style="margin:20px 0 0;width:auto;display:inline-block;padding:14px 36px" data-tab="add">Log day 1</button>
+        <div style="font-size:56px;font-weight:800;color:var(--t1);line-height:1;letter-spacing:-1px">${eBig}<span style="font-size:20px;font-weight:500;letter-spacing:0"> day${eBig === 1 ? '' : 's'}</span></div>
+        <div style="font-size:14px;font-weight:600;color:var(--teal);margin-top:10px">${eMsg}</div>
+        <button class="btn-primary" style="margin:20px 0 0;width:auto;display:inline-block;padding:14px 36px" data-tab="add">${eBtn}</button>
       </div>
       <div class="card cp" style="margin-top:8px;padding:16px 14px 14px;background:linear-gradient(155deg, rgba(48,176,122,.07) 0%, rgba(48,176,122,.02) 60%, transparent 100%);border:1px solid var(--glass-border)">
         <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">The road ahead</div>
@@ -6371,7 +6420,7 @@ function obGoalInputs(effectiveKs, hasFlower, goalUnit, suggestions, selPreset, 
     qh += '</div>';
     // v6.0.8: oninput stores to state so the value survives re-renders
     const customVal = presets.some(p => p.k === daysIn) ? '' : String(daysIn);
-    qh += '<div style="font-size:11px;color:var(--t3);margin-top:6px">Or enter a number: <input type="number" id="ob-quit-days-custom" min="0" max="365" value="' + customVal + '" placeholder="days" oninput="var v=parseInt(this.value,10); if(Number.isFinite(v)&&v>=0&&v<=365)state._obQuitDaysIn=v;" style="width:70px;padding:6px 8px;border-radius:8px;border:1px solid var(--glass-border);background:var(--glass);color:var(--t1);font-family:inherit;font-size:12px;margin-left:4px"> days</div>';
+    qh += '<div style="font-size:11px;color:var(--t2);margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">Or enter a number: <input type="number" id="ob-quit-days-custom" min="0" max="365" value="' + customVal + '" placeholder="e.g. 5" oninput="var v=parseInt(this.value,10); if(Number.isFinite(v)&&v>=0&&v<=365)state._obQuitDaysIn=v;" style="width:70px;padding:6px 8px;border-radius:8px;border:1px solid var(--glass-border);background:var(--glass);color:var(--t1);font-family:inherit;font-size:12px;text-align:center"><span>days</span></div>';
     qh += '</div>';
     return qh;
   }
@@ -6705,7 +6754,7 @@ function renderOnboarding() {
       <div style="width:100%;max-width:300px;margin-bottom:16px">
         <div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:8px">Your methods</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${methodPill('flower', 'Flower', 'Joints, bowls, vape', hasFlower)}
+          ${methodPill('flower', 'Flower', 'Joints, bowls, bud', hasFlower)}
           ${methodPill('cart', 'Vape carts', 'Pre-filled cartridges', hasCart)}
           ${methodPill('oil', 'Oil / tincture', 'Drops, sublingual', hasOil)}
         </div>
@@ -6819,8 +6868,15 @@ function renderOnboarding() {
     const rMode = state._obReduceMode || 'target';
     const reduceTitles = { target: 'Your reduction plan', maintain: 'Finding your level', flow: 'Your pace' };
     const reduceDescs = { target: 'Set your pace. We\'ll guide you week by week.', maintain: 'We\'ll help you hold steady at what works.', flow: 'No targets. Just log and watch the trends.' };
+    // v6.0.10: quit subtitle + hero preview reflect backdated days so the picker is honest
+    const qDays = state._obQuitDaysIn || 0;
+    const quitDesc = qDays === 0
+      ? 'Day 1 starts today. We\'ll track your streak.'
+      : qDays === 1
+        ? 'You\'re 1 day in. We\'ll track your streak.'
+        : `You're ${qDays} days in. We'll track your streak.`;
     const titles = { reduce: reduceTitles[rMode], budget: 'Your budget', break: 'Your break', quit: 'Your fresh start', track: 'Ready to track' };
-    const descs = { reduce: reduceDescs[rMode], budget: 'Set a weekly limit. We\'ll keep you on track.', break: 'Pick an end date. We\'ll count the days with you.', quit: 'Day 1 starts today. We\'ll track your streak.', track: 'Just log and watch your patterns emerge.' };
+    const descs = { reduce: reduceDescs[rMode], budget: 'Set a weekly limit. We\'ll keep you on track.', break: 'Pick an end date. We\'ll count the days with you.', quit: quitDesc, track: 'Just log and watch your patterns emerge.' };
 
     // Personalised preview SVG
     let previewHtml = '';
@@ -6960,10 +7016,19 @@ function renderOnboarding() {
         <div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--sep);font-size:11px;color:var(--t3);line-height:1.5;text-align:center;font-style:italic">"Once you can see it, you can change it."</div>
       </div>`;
     } else if (intent === 'quit' || intent === 'break') {
+      // v6.0.10: honor backdated quit start so preview matches what the dashboard will show
+      const pBig = intent === 'quit' ? qDays : 0;
+      const pMsg = intent === 'quit'
+        ? (qDays === 0
+          ? 'Day 1 starts today \ud83c\udf31'
+          : qDays === 1
+            ? 'You\'re 1 day in \ud83c\udf31'
+            : `You're ${qDays} days in \ud83c\udf31`)
+        : 'Day 1 starts today \ud83c\udf31';
       previewHtml = `<div style="margin:16px auto;width:100%;max-width:280px;padding:18px;border-radius:var(--rs);background:linear-gradient(145deg, rgba(30,176,122,.15) 0%, rgba(43,108,176,.05) 60%, transparent 100%);border:1px solid rgba(48,176,122,.18);box-shadow:0 6px 22px rgba(48,176,122,.1), inset 0 1px 0 rgba(255,255,255,.15)">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);margin-bottom:6px;font-weight:600">${intent === 'quit' ? 'Clear and sober' : 'Your break'}</div>
-        <div style="font-size:44px;font-weight:800;color:var(--t1);line-height:1;letter-spacing:-1px">0<span style="font-size:16px;font-weight:500;letter-spacing:0"> days</span></div>
-        <div style="font-size:13px;color:var(--teal);font-weight:600;margin-top:8px">Day 1 starts today \ud83c\udf31</div>
+        <div style="font-size:44px;font-weight:800;color:var(--t1);line-height:1;letter-spacing:-1px">${pBig}<span style="font-size:16px;font-weight:500;letter-spacing:0"> day${pBig === 1 ? '' : 's'}</span></div>
+        <div style="font-size:13px;color:var(--teal);font-weight:600;margin-top:8px">${pMsg}</div>
       </div>
       <div style="margin:0 auto 12px;width:100%;max-width:280px;padding:16px 14px 14px;border-radius:var(--rs);background:linear-gradient(155deg, rgba(48,176,122,.07) 0%, rgba(48,176,122,.02) 60%, transparent 100%);border:1px solid var(--glass-border);box-shadow:0 4px 16px rgba(48,176,122,.06), inset 0 1px 0 rgba(255,255,255,.1)">
         <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">The road ahead</div>
