@@ -6365,7 +6365,10 @@ function renderSplash() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('onboarding').classList.add('hidden');
 
-  const leafSvg = '<svg class="splash-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="splash-lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3db87a"/><stop offset="100%" stop-color="#2d6a4f"/></linearGradient></defs><path d="M32 4c0 0-8 10-8 20s8 14 8 14 8-4 8-14S32 4 32 4z M24 24c-6 4-10 10-8 18 2 8 10 14 16 14s14-6 16-14c2-8-2-14-8-18-2 4-6 8-8 8s-6-4-8-8z" fill="url(#splash-lg)" opacity=".9"/></svg>';
+  // v6.0.7: Unified leaf — same shape as the header wordmark, scaled up.
+  // Previously the splash had its own abstract 2-path drop/blob logo that
+  // didn't read as a leaf. Now it's the same elegant asymmetric leaf as `hdr-title + svg`.
+  const leafSvg = '<svg class="splash-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="splash-lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3db87a"/><stop offset="100%" stop-color="#38c88a"/></linearGradient></defs><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3 8 0 11-7.34 11-13-1-.01-4.58.34-6 .67 2 2 4 4 3.33 7.34" fill="url(#splash-lg)" opacity=".92"/></svg>';
 
   el.innerHTML = ''
     + '<div class="splash-orb splash-orb-1"></div>'
@@ -9341,15 +9344,28 @@ document.addEventListener('input', ev => {
 //   - Localstorage flag 'leef_dev_mode' is set to 'on' (use ?dev=0 to disable)
 // ═══════════════════════════════════════════════════════════
 (function() {
-  // v6.0.6 dist: dev panel always on (this is the shared preview build)
-  const stickyDev = true;
+  // Sticky dev mode toggle via URL param
+  const urlParams = new URLSearchParams(location.search);
+  if (urlParams.has('dev')) {
+    const v = urlParams.get('dev');
+    if (v === '0' || v === 'off' || v === 'false') localStorage.removeItem('leef_dev_mode');
+    else localStorage.setItem('leef_dev_mode', 'on');
+  }
+  const stickyDev = localStorage.getItem('leef_dev_mode') === 'on';
+  // Common private network ranges
+  const h = location.hostname;
+  const isLocalNetwork = h === 'localhost' || h === '127.0.0.1'
+    || h.startsWith('192.168.')
+    || h.startsWith('10.')
+    || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h);
+  if (!isLocalNetwork && !stickyDev) return;
   const TEST_USERS = [
-    { key: 'jordan', label: 'Jordan (live data)', icon: '\ud83e\uddd1', href: 'leef-v6.0.html' },
-    { key: 'fresh', label: 'Fresh / new user', icon: '\u2728', href: 'leef-v6.0-new-user-test.html?user=fresh' },
-    { key: 'quit', label: 'Quit', icon: '\ud83d\udeab', href: 'leef-v6.0-new-user-test.html?user=quit' },
-    { key: 'reduce', label: 'Reduce', icon: '\ud83d\udcc9', href: 'leef-v6.0-new-user-test.html?user=reduce' },
-    { key: 'budget', label: 'Budget', icon: '\ud83d\udcb0', href: 'leef-v6.0-new-user-test.html?user=budget' },
-    { key: 'track', label: 'Just tracking', icon: '\ud83d\udcca', href: 'leef-v6.0-new-user-test.html?user=track' }
+    { key: 'jordan', label: 'Jordan (live data)', icon: '\ud83e\uddd1', href: '/latest/v6/leef-v6.0.html' },
+    { key: 'fresh', label: 'Fresh / new user', icon: '\u2728', href: '/latest/v6/leef-v6.0-new-user-test.html?user=fresh' },
+    { key: 'quit', label: 'Quit', icon: '\ud83d\udeab', href: '/latest/v6/leef-v6.0-new-user-test.html?user=quit' },
+    { key: 'reduce', label: 'Reduce', icon: '\ud83d\udcc9', href: '/latest/v6/leef-v6.0-new-user-test.html?user=reduce' },
+    { key: 'budget', label: 'Budget', icon: '\ud83d\udcb0', href: '/latest/v6/leef-v6.0-new-user-test.html?user=budget' },
+    { key: 'track', label: 'Just tracking', icon: '\ud83d\udcca', href: '/latest/v6/leef-v6.0-new-user-test.html?user=track' }
   ];
   function buildDevPanel() {
     const wrap = document.createElement('div');
@@ -9381,7 +9397,7 @@ document.addEventListener('input', ev => {
     sep.style.cssText = 'height:1px;background:rgba(255,255,255,.1);margin:5px 8px';
     menu.appendChild(sep);
     const landingItem = document.createElement('a');
-    landingItem.href = '../index.html';
+    landingItem.href = '/latest/index.html';
     landingItem.style.cssText = 'display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:rgba(255,255,255,.6);text-decoration:none;cursor:pointer;transition:background .12s;-webkit-tap-highlight-color:transparent';
     landingItem.innerHTML = '<span style="font-size:14px;width:18px;text-align:center">\u2190</span><span>Dev landing</span>';
     landingItem.onmouseenter = () => landingItem.style.background = 'rgba(255,255,255,.06)';
