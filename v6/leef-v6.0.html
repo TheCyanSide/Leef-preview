@@ -251,7 +251,8 @@ main[data-tab-dir="right"] { animation: tabSlideRight .35s cubic-bezier(.22,1,.3
 nav {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 430px;
-  background: var(--card);
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--glass-border);
   box-shadow: 0 -4px 20px rgba(0,0,0,.06), inset 0 1px 0 var(--glass-glow);
   display: flex; padding-bottom: max(8px, env(safe-area-inset-bottom)); z-index: 100;
@@ -270,7 +271,7 @@ nav {
 }
 .tab.active::after {
   content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
-  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
 }
 .tab svg { width: 24px; height: 24px; stroke-width: 1.8; stroke: currentColor; fill: none; transition: all .15s; }
 .tab.active svg { fill: currentColor; stroke-width: 1.5; animation: tabBounce .35s cubic-bezier(.34,1.56,.64,1); }
@@ -282,7 +283,7 @@ nav {
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 16px rgba(45,106,79,.35), 0 2px 6px rgba(45,106,79,.25), inset 0 1px 0 rgba(255,255,255,.25);
   margin-top: -16px; transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
-  border: 2px solid var(--bg, #fbfaf6);
+  border: 2px solid var(--card);
 }
 .tab-fab .fab-circle svg { width: 22px; height: 22px; stroke: #fff; stroke-width: 2.4; fill: none; }
 .tab-fab.active { color: var(--accent); }
@@ -1438,7 +1439,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app';
-const VERSION = '6.0.11';
+const VERSION = '6.0.12';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -1512,37 +1513,40 @@ const SYMPTOM_LIST = [
 
 // v3.3: Rich recovery timeline data — used by Progress > Recovery section for quit/break users
 // Each symptom: onset (when it starts), peak (worst day), resolved (when most improve), tip (coping strategy)
+// v6.0.12: reordered by resolution speed (quickest first → "Behind you" cards appear at top).
+// Emojis: no face emojis — object/nature only for a cleaner, less cartoon feel.
+// Copy: observational tone ("commonly", "may", "many people"), no prescriptive medical claims.
 const RECOVERY_SYMPTOMS = [
-  { key: 'cravings',    icon: '\ud83e\udd24', label: 'Cravings',         onset: 1, peak: 3,  resolved: 21, color: '#e0a030',
-    desc: 'Strong urges, especially in habitual settings or moments.',
-    tip: 'Distract for 15 minutes \u2014 cravings rarely last longer. Cold water, a walk, or texting a friend all reset the urge.' },
-  { key: 'insomnia',    icon: '\ud83d\ude35', label: 'Sleep trouble',    onset: 1, peak: 5,  resolved: 21, color: '#3478c8',
-    desc: 'Trouble falling asleep, waking up frequently, or feeling unrested.',
-    tip: 'Avoid screens 30 min before bed. A wind-down routine helps \u2014 warm drinks, dimmed lights, same time each night.' },
-  { key: 'dreams',      icon: '\ud83d\udcad', label: 'Vivid dreams',     onset: 2, peak: 7,  resolved: 28, color: '#8f88e8',
-    desc: 'Intense or unusual dreams as deeper sleep stages return.',
-    tip: 'Many people see this as a positive sign \u2014 deeper sleep stages may be returning. It usually settles on its own.' },
-  { key: 'irritability',label: 'Irritability',  icon: '\ud83d\ude24', onset: 1, peak: 4,  resolved: 14, color: '#c84e28',
+  { key: 'headache',    icon: '\ud83d\udcab', label: 'Headaches',        onset: 1, peak: 3,  resolved: 7,  color: '#c84e28',
+    desc: 'Mild to moderate headaches, often linked to dehydration or tension.',
+    tip: 'Drink water steadily throughout the day. Rest when you can. Headaches commonly ease within the first week.' },
+  { key: 'irritability',icon: '\ud83d\udd25', label: 'Irritability',     onset: 1, peak: 4,  resolved: 14, color: '#c84e28',
     desc: 'Short fuse, frustration over small things, snappy mood.',
-    tip: 'Tell people around you what you\'re going through. A 10-minute walk or breathing exercise can lower the heat fast.' },
-  { key: 'anxiety',     icon: '\ud83d\ude30', label: 'Anxiety',          onset: 1, peak: 7,  resolved: 28, color: '#b8700f',
-    desc: 'Restlessness, racing thoughts, physical tension.',
-    tip: 'Slow breathing exercises can help \u2014 try breathing in for 4 counts, holding for 7, out for 8. Caffeine can make it worse \u2014 consider cutting back.' },
+    tip: 'Let people around you know what you\'re going through. A 10-minute walk or slow breathing can take the edge off.' },
   { key: 'appetite',    icon: '\ud83c\udf75', label: 'Low appetite',     onset: 1, peak: 5,  resolved: 14, color: '#1eb07a',
     desc: 'Loss of hunger, food feels less appealing, smaller meals.',
-    tip: 'Eat small but often \u2014 fruit, smoothies, soups. Many people report appetite returning within a few weeks. Stay hydrated even when not hungry.' },
-  { key: 'sweats',      icon: '\ud83d\udca6', label: 'Night sweats',     onset: 2, peak: 5,  resolved: 14, color: '#4d9de0',
-    desc: 'Waking up sweaty or with chills as body temperature regulates.',
-    tip: 'Cool bedroom, light bedding, hydrate before bed. This is a common adjustment \u2014 many people report it passing within a couple of weeks.' },
-  { key: 'headache',    icon: '\ud83e\udd15', label: 'Headaches',        onset: 1, peak: 3,  resolved: 7,  color: '#c84e28',
-    desc: 'Mild to moderate headaches, often dehydration-related.',
-    tip: 'Drink water steadily throughout the day. Rest when you can. Most people report headaches fading within a week.' },
-  { key: 'brainfog',    icon: '\ud83c\udf2b', label: 'Brain fog',        onset: 1, peak: 7,  resolved: 28, color: '#6c65cc',
+    tip: 'Eat small but often \u2014 fruit, smoothies, soups. Appetite commonly returns within a few weeks. Stay hydrated even when not hungry.' },
+  { key: 'sweats',      icon: '\ud83d\udca7', label: 'Night sweats',     onset: 2, peak: 5,  resolved: 14, color: '#4d9de0',
+    desc: 'Waking up sweaty or with chills as the body adjusts.',
+    tip: 'Cool bedroom, light bedding, hydrate before bed. A common adjustment that typically settles within a couple of weeks.' },
+  { key: 'cravings',    icon: '\u26a1',       label: 'Cravings',         onset: 1, peak: 3,  resolved: 21, color: '#e0a030',
+    desc: 'Strong urges, especially in familiar settings or routines.',
+    tip: 'Distract for 15 minutes \u2014 cravings rarely last longer. Cold water, a walk, or texting a friend can reset the urge.' },
+  { key: 'insomnia',    icon: '\ud83c\udf19',  label: 'Sleep trouble',   onset: 1, peak: 5,  resolved: 21, color: '#3478c8',
+    desc: 'Trouble falling asleep, waking frequently, or feeling unrested.',
+    tip: 'Avoid screens 30 min before bed. A wind-down routine helps \u2014 warm drinks, dimmed lights, same time each night.' },
+  { key: 'anxiety',     icon: '\ud83d\udca8',  label: 'Anxiety',         onset: 1, peak: 7,  resolved: 28, color: '#b8700f',
+    desc: 'Restlessness, racing thoughts, physical tension.',
+    tip: 'Slow breathing can help \u2014 try in for 4, hold for 7, out for 8. Caffeine may make it worse \u2014 consider cutting back.' },
+  { key: 'dreams',      icon: '\u2601\ufe0f',  label: 'Vivid dreams',    onset: 2, peak: 7,  resolved: 28, color: '#8f88e8',
+    desc: 'Intense or unusual dreams as deeper sleep stages return.',
+    tip: 'Often a sign that deeper sleep is returning. It usually settles on its own.' },
+  { key: 'brainfog',    icon: '\ud83c\udf00',  label: 'Brain fog',       onset: 1, peak: 7,  resolved: 28, color: '#6c65cc',
     desc: 'Difficulty concentrating, memory feels slow, words don\'t come.',
-    tip: 'Don\'t fight it \u2014 it\'s a common part of the process. Light exercise, good sleep, and balanced meals may help. Many people report it clearing over time.' },
-  { key: 'mood',        icon: '\ud83d\ude14', label: 'Low mood',         onset: 3, peak: 10, resolved: 28, color: '#3478c8',
+    tip: 'Give yourself grace \u2014 it\'s a common adjustment. Light exercise, good sleep, and balanced meals may help.' },
+  { key: 'mood',        icon: '\ud83c\udf27\ufe0f', label: 'Low mood',   onset: 3, peak: 10, resolved: 28, color: '#3478c8',
     desc: 'Flatness, low energy, things feel less rewarding.',
-    tip: 'Feeling flat is a common experience. Sunlight, movement, and social contact may help. Many people report mood improving over the first few weeks.' }
+    tip: 'Flatness is a normal part of withdrawal for many people. Sunlight, movement, and social contact may help. It commonly improves over the first few weeks.' }
 ];
 
 const DISCLAIMER = 'For educational purposes only. Not a substitute for medical advice.';
@@ -4991,7 +4995,7 @@ function renderSettings(s) {
   const methodDefs = [
     {k:'flower', l:'Flower', icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c0-4-3-6-3-10a3 3 0 0 1 6 0c0 4-3 6-3 10z"/><path d="M10 8c-2-1-4 0-5 2s0 4 2 5"/><path d="M14 8c2-1 4 0 5 2s0 4-2 5"/></svg>'},
     {k:'cart', l:'Vape carts', icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="5" rx="1"/><rect x="9" y="7" width="6" height="13" rx="1"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="10" y1="12" x2="14" y2="12"/></svg>'},
-    {k:'oil', l:'Oil / tincture', icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4l1 5H9l1-5z"/><path d="M9 7v12a3 3 0 0 0 6 0V7"/><circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none"/></svg>'}
+    {k:'oil', l:'Oil / drops', icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4l1 5H9l1-5z"/><path d="M9 7v12a3 3 0 0 0 6 0V7"/><circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none"/></svg>'}
   ];
 
   // v3.4: Theme swatch definitions
@@ -6756,7 +6760,7 @@ function renderOnboarding() {
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           ${methodPill('flower', 'Flower', 'Joints, bowls, bud', hasFlower)}
           ${methodPill('cart', 'Vape carts', 'Pre-filled cartridges', hasCart)}
-          ${methodPill('oil', 'Oil / tincture', 'Drops, sublingual', hasOil)}
+          ${methodPill('oil', 'Oil / drops', 'Drops, sublingual', hasOil)}
         </div>
         <div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">${hasMethods ? 'Select all that apply.' : 'Select at least one to continue.'}</div>
 
@@ -6795,7 +6799,7 @@ function renderOnboarding() {
               <input class="ob-input" type="text" id="ob-cart-puffs" step="1" min="0" placeholder="e.g. 10" inputmode="numeric" value="${cartPuffs || ''}">
             </div>` : ''}
             ${hasOil ? `<div class="ob-input-group" style="margin-bottom:4px">
-              <label class="ob-input-label">Oil / tincture \u2014 ml per day</label>
+              <label class="ob-input-label">Oil / drops \u2014 ml per day</label>
               <input class="ob-input" type="text" id="ob-oil-ml" step="0.1" min="0" placeholder="e.g. 0.5" inputmode="decimal" value="${oilMl || ''}">
             </div>` : ''}
           ` : `
@@ -6820,7 +6824,7 @@ function renderOnboarding() {
             ` : ''}
             ${hasOil ? `
               <div class="ob-input-group" style="margin-bottom:4px">
-                <label class="ob-input-label">Oil / tincture \u2014 ml per day</label>
+                <label class="ob-input-label">Oil / drops \u2014 ml per day</label>
                 <input class="ob-input" type="text" id="ob-oil-ml" step="0.1" min="0" placeholder="e.g. 0.5" inputmode="decimal" value="${oilMl || ''}">
               </div>
               <div class="ob-input-group" style="margin-bottom:4px">
