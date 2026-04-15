@@ -1375,7 +1375,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app';
-const VERSION = '6.0.6';
+const VERSION = '6.0.7';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -1609,6 +1609,11 @@ function tCol(t, goal) {
 }
 function tTxt(t) { if (Math.abs(t) <= 3) return '→ stable'; return `${t > 0 ? '↑' : '↓'} ${Math.abs(t)}%`; }
 
+// v6.0.7: total flower for multi-strain days (grams + grams2).
+// Many insights and stats were using `x.grams` only, ignoring the secondary
+// strain column, which gave wrong trend/avg numbers for users mixing strains.
+function totalFlower(e) { return (e && ((e.grams || 0) + (e.grams2 || 0))) || 0; }
+
 function calcMg(e) {
   if (!e || typeof e !== 'object') return 0;
   let mg = 0;
@@ -1770,10 +1775,11 @@ function pickInsight(s) {
   }
 
   // 3. Reduce user crushing target for 14+ days
+  // v6.0.7: totalFlower for multi-strain days
   if (goalType === 'reduce' && days >= 14 && goal.targetGrams && !isDismissed('reduce_lower_target')) {
     const last14 = e.slice(-14).filter(x => x.grams != null);
     if (last14.length >= 10) {
-      const avg = last14.reduce((a, x) => a + (x.grams || 0), 0) / last14.length;
+      const avg = last14.reduce((a, x) => a + totalFlower(x), 0) / last14.length;
       if (avg < goal.targetGrams * 0.6) {
         return { id: 'reduce_lower_target', icon: '\u2728', title: "You're crushing your target", body: `2 weeks under your goal. Maybe time to set a tighter one?`, action: 'change-plan', actionLabel: 'Update goal' };
       }
@@ -1911,17 +1917,16 @@ function pickInsight(s) {
   }
 
   // 11. v3.3.1: Best week landmark (reduce/track users hitting a new low)
+  // v6.0.7: use totalFlower so multi-strain days aren't undercounted
   if ((goalType === 'reduce' || !goal) && days >= 14 && !isDismissed('new_low_landmark')) {
-    // Compare last 7 days avg to all previous 7-day windows
     const last7 = e.slice(-7).filter(x => x.grams != null);
     if (last7.length >= 5) {
-      const last7Avg = last7.reduce((a, x) => a + (x.grams || 0), 0) / last7.length;
-      // Check if this is the lowest 7-day window in the data
+      const last7Avg = last7.reduce((a, x) => a + totalFlower(x), 0) / last7.length;
       let isLowest = true;
       for (let i = 0; i <= e.length - 14; i++) {
         const window = e.slice(i, i + 7).filter(x => x.grams != null);
         if (window.length >= 5) {
-          const winAvg = window.reduce((a, x) => a + (x.grams || 0), 0) / window.length;
+          const winAvg = window.reduce((a, x) => a + totalFlower(x), 0) / window.length;
           if (winAvg < last7Avg * 0.99) { isLowest = false; break; }
         }
       }
@@ -1959,12 +1964,13 @@ function pickInsight(s) {
   }
 
   // 13. v3.3.1: Target-reach forecast (reduce users only)
+  // v6.0.7: totalFlower for multi-strain days
   if (goalType === 'reduce' && days >= 14 && goal.targetGrams && !isDismissed('target_eta')) {
     const last14 = e.slice(-14).filter(x => x.grams != null);
     const prev14 = e.slice(-28, -14).filter(x => x.grams != null);
     if (last14.length >= 10 && prev14.length >= 10) {
-      const recentAvg = last14.reduce((a, x) => a + (x.grams || 0), 0) / last14.length;
-      const prevAvg = prev14.reduce((a, x) => a + (x.grams || 0), 0) / prev14.length;
+      const recentAvg = last14.reduce((a, x) => a + totalFlower(x), 0) / last14.length;
+      const prevAvg = prev14.reduce((a, x) => a + totalFlower(x), 0) / prev14.length;
       if (recentAvg > goal.targetGrams && prevAvg > recentAvg) {
         // User is reducing. Project ETA to target based on 2-week reduction rate
         const drop2Weeks = prevAvg - recentAvg;
@@ -2692,10 +2698,11 @@ function goalProgress() {
     const rm = goal.reduceMode || 'target';
 
     // v5.1: Maintain mode — user wants to stay at a steady level, not reduce further.
+    // v6.0.7: use totalFlower for multi-strain days
     if (rm === 'maintain') {
       if (!goal.maintainAt || goal.maintainAt <= 0) return null;
-      const l7 = e.slice(-7).filter(x => x.grams != null && x.grams > 0);
-      const currentAvg = l7.length ? l7.reduce((a, x) => a + x.grams, 0) / l7.length : 0;
+      const l7 = e.slice(-7).filter(x => totalFlower(x) > 0);
+      const currentAvg = l7.length ? l7.reduce((a, x) => a + totalFlower(x), 0) / l7.length : 0;
       const diff = (currentAvg - goal.maintainAt) / goal.maintainAt;
       let status;
       if (diff > 0.2) status = 'drifting_up';
@@ -2705,17 +2712,19 @@ function goalProgress() {
     }
 
     // v5.1: Flow mode — no target, just show current pace + trend vs last week.
+    // v6.0.7: totalFlower for multi-strain days
     if (rm === 'flow') {
-      const l7 = e.slice(-7).filter(x => x.grams != null && x.grams > 0);
+      const l7 = e.slice(-7).filter(x => totalFlower(x) > 0);
       if (l7.length === 0) return null;
-      const p7 = e.slice(-14, -7).filter(x => x.grams != null && x.grams > 0);
-      const currentAvg = l7.reduce((a, x) => a + x.grams, 0) / l7.length;
-      const prevAvg = p7.length ? p7.reduce((a, x) => a + x.grams, 0) / p7.length : currentAvg;
+      const p7 = e.slice(-14, -7).filter(x => totalFlower(x) > 0);
+      const currentAvg = l7.reduce((a, x) => a + totalFlower(x), 0) / l7.length;
+      const prevAvg = p7.length ? p7.reduce((a, x) => a + totalFlower(x), 0) / p7.length : currentAvg;
       const trendPct = prevAvg > 0 ? Math.round((currentAvg - prevAvg) / prevAvg * 100) : 0;
       return { type: 'reduce', reduceMode: 'flow', currentAvg, trendPct, unit: 'g' };
     }
 
     // Target mode (default)
+    // v6.0.7: grams path uses totalFlower for multi-strain days
     const useMg = goal.unit === 'mg';
     const target = useMg ? goal.targetMg : goal.targetGrams;
     if (!target || target <= 0) return null;
@@ -2726,10 +2735,10 @@ function goalProgress() {
       const l7 = e.slice(-7);
       currentAvg = l7.length ? Math.round(l7.reduce((a, x) => a + calcMg(x), 0) / l7.length) : 0;
     } else {
-      const fw = e.slice(0, 7).filter(x => x.grams != null && x.grams > 0);
-      startAvg = fw.length ? fw.reduce((a, x) => a + x.grams, 0) / fw.length : 0;
-      const l7 = e.slice(-7).filter(x => x.grams != null && x.grams > 0);
-      currentAvg = l7.length ? l7.reduce((a, x) => a + x.grams, 0) / l7.length : 0;
+      const fw = e.slice(0, 7).filter(x => totalFlower(x) > 0);
+      startAvg = fw.length ? fw.reduce((a, x) => a + totalFlower(x), 0) / fw.length : 0;
+      const l7 = e.slice(-7).filter(x => totalFlower(x) > 0);
+      currentAvg = l7.length ? l7.reduce((a, x) => a + totalFlower(x), 0) / l7.length : 0;
     }
     if (startAvg <= target) return { type: 'reduce', reduceMode: 'target', progress: 1, currentAvg, startAvg, target, targetDate: goal.targetDate, unit: useMg ? 'mg' : 'g' };
     const totalReduction = startAvg - target;
@@ -2788,11 +2797,12 @@ function getStats() {
     zeroDays:0,zeroDaysL30:0,underTargetDays:null,moneySaved:null,l7symptoms:{},p7symptoms:{},
   });
 
-  const wg = e.filter(x => x.grams != null && x.grams > 0);
-  const l7g = e.slice(-7).filter(x => x.grams != null && x.grams > 0);
-  const p7g = e.slice(-14, -7).filter(x => x.grams != null && x.grams > 0);
-  const ar = l7g.length ? l7g.reduce((s, x) => s + x.grams, 0) / l7g.length : 0;
-  const ap = p7g.length ? p7g.reduce((s, x) => s + x.grams, 0) / p7g.length : 0;
+  // v6.0.7: flower stats use totalFlower (grams + grams2) for multi-strain days
+  const wg = e.filter(x => totalFlower(x) > 0);
+  const l7g = e.slice(-7).filter(x => totalFlower(x) > 0);
+  const p7g = e.slice(-14, -7).filter(x => totalFlower(x) > 0);
+  const ar = l7g.length ? l7g.reduce((s, x) => s + totalFlower(x), 0) / l7g.length : 0;
+  const ap = p7g.length ? p7g.reduce((s, x) => s + totalFlower(x), 0) / p7g.length : 0;
   const trendG = ap > 0 ? Math.round((ar - ap) / ap * 100) : 0;
 
   const totMg = e.reduce((s, x) => s + calcMg(x), 0);
@@ -2802,8 +2812,8 @@ function getStats() {
   const avg7mgPrev = p7all.length ? Math.round(p7all.reduce((s, x) => s + calcMg(x), 0) / p7all.length) : 0;
   const trendMg = avg7mgPrev > 0 ? Math.round((avg7mg - avg7mgPrev) / avg7mgPrev * 100) : 0;
 
-  const fw = e.slice(0, 7).filter(x => x.grams != null && x.grams > 0);
-  const fwAvg = fw.length ? fw.reduce((s, x) => s + x.grams, 0) / fw.length : null;
+  const fw = e.slice(0, 7).filter(x => totalFlower(x) > 0);
+  const fwAvg = fw.length ? fw.reduce((s, x) => s + totalFlower(x), 0) / fw.length : null;
   const reductionG = fwAvg > 0 && ar > 0 ? Math.round((1 - ar / fwAvg) * 100) : null;
   const fwMg = e.slice(0, 7);
   const fwAvgMg = fwMg.length ? Math.round(fwMg.reduce((s, x) => s + calcMg(x), 0) / fwMg.length) : null;
@@ -2811,8 +2821,8 @@ function getStats() {
 
   let bestWeek = null, bestWeekMg = null;
   for (let i = 6; i < e.length; i++) {
-    const wSlice = e.slice(i - 6, i + 1).filter(x => x.grams != null && x.grams > 0);
-    if (wSlice.length) { const avg = wSlice.reduce((s, x) => s + x.grams, 0) / wSlice.length; if (bestWeek === null || avg < bestWeek) bestWeek = avg; }
+    const wSlice = e.slice(i - 6, i + 1).filter(x => totalFlower(x) > 0);
+    if (wSlice.length) { const avg = wSlice.reduce((s, x) => s + totalFlower(x), 0) / wSlice.length; if (bestWeek === null || avg < bestWeek) bestWeek = avg; }
     const avgMg = Math.round(e.slice(i - 6, i + 1).reduce((s, x) => s + calcMg(x), 0) / 7);
     if (bestWeekMg === null || avgMg < bestWeekMg) bestWeekMg = avgMg;
   }
@@ -2923,7 +2933,7 @@ function getStats() {
     if (target > 0) {
       underTargetDays = l7all.filter(x => {
         if (useMg) return calcMg(x) <= target;
-        return (x.grams || 0) <= target;
+        return totalFlower(x) <= target;  // v6.0.7: multi-strain aware
       }).length;
     }
   }
@@ -7288,9 +7298,10 @@ function showPlanModal(editMode) {
   const sel = pm.intent;
 
   // Recent averages for reduce suggestions
+  // v6.0.7: totalFlower for multi-strain days
   const e = state.entries;
-  const l7g = e.slice(-7).filter(x => x.grams != null && x.grams > 0);
-  const avgG = l7g.length ? Math.round(l7g.reduce((s, x) => s + x.grams, 0) / l7g.length * 10) / 10 : 0;
+  const l7g = e.slice(-7).filter(x => totalFlower(x) > 0);
+  const avgG = l7g.length ? Math.round(l7g.reduce((s, x) => s + totalFlower(x), 0) / l7g.length * 10) / 10 : 0;
   const l7all = e.slice(-7);
   const avgMg = l7all.length ? Math.round(l7all.reduce((s, x) => s + calcMg(x), 0) / l7all.length) : 0;
   const avgPct = ks && avgG > 0 && avgMg > 0 ? (avgMg / (avgG * 10)) : 0;
