@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leef — a preview</title>
+<script>
+// Guard: bounce to gate if not unlocked or expired
+(function() {
+  try {
+    const raw = localStorage.getItem('leef_unlock');
+    if (!raw) { location.replace('index.html'); return; }
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.expires || obj.expires < Date.now()) {
+      localStorage.removeItem('leef_unlock');
+      location.replace('index.html');
+    }
+  } catch (e) { location.replace('index.html'); }
+})();
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0b0b11;
+    --fg: #f5f5f7;
+    --t2: rgba(235,235,245,.62);
+    --t3: rgba(235,235,245,.42);
+    --sep: rgba(255,255,255,.08);
+    --accent: #4a9e72;
+    --accent-glow: rgba(74,158,114,.18);
+  }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 48px 20px 40px;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(74,158,114,.08) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(77,157,224,.05) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+  .wrap { width: 100%; max-width: 380px; }
+  header { text-align: center; margin-bottom: 28px; }
+  h1 {
+    font-size: 32px; font-weight: 800; letter-spacing: -1.2px;
+    background: linear-gradient(180deg, #ffffff 0%, #c8c8d0 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .intro {
+    font-size: 14px; color: var(--t2); line-height: 1.55;
+    max-width: 320px; margin: 0 auto;
+  }
+  .intro strong { color: var(--fg); font-weight: 600; }
+  .section {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--t3);
+    margin: 28px 0 10px 4px;
+  }
+  .grid { display: flex; flex-direction: column; gap: 8px; }
+  .card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px; border-radius: 14px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    transition: transform .15s cubic-bezier(.22,1,.36,1), border-color .15s, background .15s;
+    text-decoration: none; color: inherit;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 68px;
+  }
+  .card:hover { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.07); }
+  .card:active { transform: scale(.975); }
+  .card.live {
+    border-color: rgba(74,158,114,.35);
+    background: linear-gradient(155deg, rgba(74,158,114,.12) 0%, rgba(74,158,114,.03) 60%, transparent 100%);
+    box-shadow: 0 2px 12px rgba(74,158,114,.1), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .icon {
+    font-size: 22px; flex-shrink: 0;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 11px;
+  }
+  .icon-jordan { background: rgba(74,158,114,.18); }
+  .icon-fresh { background: rgba(77,157,224,.15); }
+  .icon-quit { background: rgba(48,176,122,.15); }
+  .icon-reduce { background: rgba(224,160,48,.15); }
+  .icon-budget { background: rgba(143,136,232,.15); }
+  .icon-track { background: rgba(77,157,224,.15); }
+  .body { flex: 1; min-width: 0; }
+  .label { font-size: 15px; font-weight: 600; line-height: 1.2; }
+  .desc { font-size: 12px; color: var(--t3); margin-top: 3px; line-height: 1.4; }
+  .badge {
+    font-size: 9px; font-weight: 700; letter-spacing: .5px;
+    padding: 3px 8px; border-radius: 5px;
+    margin-left: auto; flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .badge-live { background: rgba(74,158,114,.22); color: #5fb488; }
+  .badge-fresh { background: rgba(77,157,224,.22); color: #6fb2e8; }
+  .badge-day { background: rgba(224,160,48,.22); color: #e8b048; }
+  .note {
+    margin-top: 28px; padding: 14px 16px;
+    border-radius: 12px; background: rgba(255,255,255,.03);
+    border: 1px solid var(--sep);
+    font-size: 12px; color: var(--t2); line-height: 1.55;
+  }
+  .note strong { color: var(--fg); font-weight: 600; }
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <h1>Leef</h1>
+    <p class="intro">A cannabis taper tracking app I've been building. Tap <strong>Jordan's version</strong> to see my live 113-day taper, or try any test user below to see how different paths feel.</p>
+  </header>
+
+  <div class="section">My real data</div>
+  <div class="grid">
+    <a class="card live" href="v6/leef-v6.0.html">
+      <div class="icon icon-jordan">🧑</div>
+      <div class="body">
+        <div class="label">Jordan's version</div>
+        <div class="desc">113 entries, Dec 23 → today</div>
+      </div>
+      <span class="badge badge-live">Live</span>
+    </a>
+  </div>
+
+  <div class="section">Fresh start</div>
+  <div class="grid">
+    <a class="card" href="v6/leef-v6.0-new-user-test.html?user=fresh">
+      <div class="icon icon-fresh">✨</div>
+      <div class="body">
+        <div class="label">New user</div>
+        <div class="desc">Empty — starts onboarding from scratch</div>
+      </div>
+      <span class="badge badge-fresh">Fresh</span>
+    </a>
+  </div>
+
+  <div class="section">Test user paths</div>
+  <div class="grid">
+    <a class="card" href="v6/leef-v6.0-new-user-test.html?user=quit">
+      <div class="icon icon-quit">🚫</div>
+      <div class="body">
+        <div class="label">Quit user</div>
+        <div class="desc">14 days clear and sober, withdrawal tracking</div>
+      </div>
+      <span class="badge badge-day">14d</span>
+    </a>
+    <a class="card" href="v6/leef-v6.0-new-user-test.html?user=reduce">
+      <div class="icon icon-reduce">📉</div>
+      <div class="body">
+        <div class="label">Reduce user</div>
+        <div class="desc">30 days tapering, 1.5g → 0.5g target</div>
+      </div>
+      <span class="badge badge-day">30d</span>
+    </a>
+    <a class="card" href="v6/leef-v6.0-new-user-test.html?user=budget">
+      <div class="icon icon-budget">💰</div>
+      <div class="body">
+        <div class="label">Budget user</div>
+        <div class="desc">60 days with purchases, £50/week budget</div>
+      </div>
+      <span class="badge badge-day">60d</span>
+    </a>
+    <a class="card" href="v6/leef-v6.0-new-user-test.html?user=track">
+      <div class="icon icon-track">📊</div>
+      <div class="body">
+        <div class="label">Just tracking</div>
+        <div class="desc">7 days of varied data, no goal set</div>
+      </div>
+      <span class="badge badge-day">7d</span>
+    </a>
+  </div>
+
+  <div class="note">
+    <strong>Tip for your phone:</strong> Tap <strong>Jordan's version</strong> to see the real data, then use your phone's share button to "Add to Home Screen" — it becomes a proper app icon.
+  </div>
+</div>
+
+</body></html>

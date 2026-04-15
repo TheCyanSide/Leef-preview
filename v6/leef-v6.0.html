@@ -1369,7 +1369,55 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 <input type="file" id="import-input" accept=".json" style="display:none">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="taper-data.js?v=20260407"></script>
+<script>
+// v6.0.7 (dist): guard + async decrypt of taper-data.enc
+// The main app bootstrap (loadData/render at the end of this file) is
+// wrapped in window._leefUnlockPromise.then(...) so it runs AFTER decrypt.
+(function leefGuard() {
+  let unlockObj = null;
+  try {
+    const raw = localStorage.getItem('leef_unlock');
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && o.expires && o.expires > Date.now()) unlockObj = o;
+      else localStorage.removeItem('leef_unlock');
+    }
+  } catch (e) {}
+  if (!unlockObj) { location.replace('../index.html'); return; }
+
+  async function decryptBlob(password, b64) {
+    const raw = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+    const salt = raw.slice(0, 16);
+    const iv = raw.slice(16, 28);
+    const ct = raw.slice(28);
+    const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+    );
+    const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(plainBuf);
+  }
+
+  window._leefUnlockPromise = (async () => {
+    try {
+      const encText = await fetch('taper-data.enc').then(r => r.text());
+      const plain = await decryptBlob(unlockObj.pw, encText);
+      // The decrypted content is the original taper-data.js source, which
+      // assigns to window.TAPER_DATA. Evaluate it as a script so it runs.
+      const script = document.createElement('script');
+      script.textContent = plain;
+      document.head.appendChild(script);
+      return true;
+    } catch (e) {
+      // Decrypt failed — password invalidated somehow. Back to gate.
+      localStorage.removeItem('leef_unlock');
+      location.replace('../index.html');
+      return false;
+    }
+  })();
+})();
+</script>
 <script>
 /* ═══════════════════════════════════════════════════════════
    CONFIGURATION & CONSTANTS
@@ -1379,7 +1427,8 @@ const VERSION = '6.0.7';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
-const SEED = window.TAPER_DATA || [];
+// v6.0.7 (dist): taper-data is loaded asynchronously via decrypt, so read at call time
+function _getSeed() { return window.TAPER_DATA || []; }
 
 const SERIES = [
   { key: 'grams',   label: 'Flower (g)',   light: '#3478c8', dark: '#4d9de0' },
@@ -2330,8 +2379,9 @@ function loadData() {
   }
 
   // Load from seed data file (for the main file with taper-data.js)
-  if (SEED.length) {
-    state.entries = SEED.map((s, i) => ({ id: 'h' + i, ...s, mood: s.mood ?? null, sleep: s.sleep ?? null }));
+  const _seed = _getSeed();
+  if (_seed.length) {
+    state.entries = _seed.map((s, i) => ({ id: 'h' + i, ...s, mood: s.mood ?? null, sleep: s.sleep ?? null }));
     state.settings.onboardingDone = true;
     state.settings.splashSeen = true; // v5.0: skip splash for seed-data users
     saveData();
@@ -9450,23 +9500,25 @@ document.addEventListener('input', ev => {
   document.addEventListener('DOMContentLoaded', () => document.body.appendChild(buildDevPanel()));
 })();
 
-loadData();
-// v6.0.2: Augment loaded entries with sober window fields (idempotent)
-augmentSoberWindowFields(state.entries);
-// v3.3.2: intent-aware vis defaults on load
-if (!state.settings.knowsStrength) {
-  state.vis = { grams: true, oil: false, mg: false, mgTrend: false };
-} else {
-  const gt = state.settings.goal?.type;
-  const ks = state.settings.knowsStrength;
-  if (gt === 'break' || gt === 'budget') {
+// v6.0.7 (dist): bootstrap waits for the taper-data decrypt before loadData()
+(window._leefUnlockPromise || Promise.resolve(true)).then(function(ok) {
+  if (ok === false) return;
+  loadData();
+  augmentSoberWindowFields(state.entries);
+  if (!state.settings.knowsStrength) {
     state.vis = { grams: true, oil: false, mg: false, mgTrend: false };
   } else {
-    state.vis = { grams: true, oil: false, mg: ks, mgTrend: ks };
+    const gt = state.settings.goal?.type;
+    const ks = state.settings.knowsStrength;
+    if (gt === 'break' || gt === 'budget') {
+      state.vis = { grams: true, oil: false, mg: false, mgTrend: false };
+    } else {
+      state.vis = { grams: true, oil: false, mg: ks, mgTrend: ks };
+    }
   }
-}
-state.form = blankForm(false);
-render();
+  state.form = blankForm(false);
+  render();
+});
 
 // v3.3.1: Pull-to-refresh on touch devices
 (function() {

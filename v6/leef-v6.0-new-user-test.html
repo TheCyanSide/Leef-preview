@@ -1371,6 +1371,20 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <!-- taper-data.js removed for clean new-user test -->
 <script>
+// v6.0.7 (dist): guard — bounce to gate if not unlocked
+(function leefGuard() {
+  try {
+    const raw = localStorage.getItem('leef_unlock');
+    if (!raw) { location.replace('../index.html'); return; }
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.expires || obj.expires < Date.now()) {
+      localStorage.removeItem('leef_unlock');
+      location.replace('../index.html');
+    }
+  } catch (e) { location.replace('../index.html'); }
+})();
+</script>
+<script>
 /* ═══════════════════════════════════════════════════════════
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
