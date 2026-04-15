@@ -6325,7 +6325,34 @@ function obIntentCard(type, icon, title, desc) {
 
 function obGoalInputs(effectiveKs, hasFlower, goalUnit, suggestions, selPreset, autoTarget) {
   const intent = state._obIntent;
-  if (!intent || intent === 'quit' || intent === 'track') return '';
+  if (!intent || intent === 'track') return '';
+  // v6.0.7: Quit path — ask if user has already been clean for some days
+  if (intent === 'quit') {
+    const daysIn = state._obQuitDaysIn ?? 0;
+    const presets = [
+      { k: 0, label: 'Starting today' },
+      { k: 1, label: '1 day' },
+      { k: 3, label: '3 days' },
+      { k: 7, label: '1 week' },
+      { k: 14, label: '2 weeks' },
+      { k: 30, label: '1 month' },
+    ];
+    let qh = '<div style="animation:fadeSlideIn .25s ease;margin-top:12px">';
+    qh += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">When did you stop?</div>';
+    qh += '<div style="font-size:12px;color:var(--t3);margin-bottom:10px;line-height:1.45">Already a few days in? Pick how many \u2014 we\u2019ll backdate your streak.</div>';
+    qh += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+    presets.forEach(p => {
+      const sel = daysIn === p.k;
+      const bg = sel ? 'var(--accent)' : 'var(--glass)';
+      const col = sel ? '#fff' : 'var(--t2)';
+      const bdr = sel ? 'var(--accent)' : 'var(--glass-border)';
+      qh += `<button type="button" data-ob-quit-days="${p.k}" style="padding:9px 12px;font-size:12px;font-weight:600;border-radius:10px;border:1.5px solid ${bdr};background:${bg};color:${col};cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:all .15s">${p.label}</button>`;
+    });
+    qh += '</div>';
+    qh += '<div style="font-size:11px;color:var(--t3);margin-top:6px">Or enter a number: <input type="number" id="ob-quit-days-custom" min="0" max="365" value="' + (presets.some(p => p.k === daysIn) ? '' : daysIn) + '" placeholder="days" style="width:70px;padding:6px 8px;border-radius:8px;border:1px solid var(--glass-border);background:var(--glass);color:var(--t1);font-family:inherit;font-size:12px;margin-left:4px"> days</div>';
+    qh += '</div>';
+    return qh;
+  }
   let h = '<div style="animation:fadeSlideIn .25s ease;margin-top:12px">';
 
   if (intent === 'reduce') {
@@ -8728,6 +8755,15 @@ document.addEventListener('click', ev => {
   const obReduceMode = cl('[data-ob-reduce-mode]');
   if (obReduceMode) { state._obReduceMode = obReduceMode.dataset.obReduceMode; haptic(6); renderOnboarding(); return; }
 
+  // v6.0.7: Onboarding — quit path "days already clean" preset pill
+  const obQuitDays = cl('[data-ob-quit-days]');
+  if (obQuitDays) {
+    state._obQuitDaysIn = parseInt(obQuitDays.dataset.obQuitDays, 10) || 0;
+    haptic(6);
+    renderOnboarding();
+    return;
+  }
+
   // Onboarding — motivation tag toggle (Step 1, NEW in v3.3)
   const obTag = cl('[data-ob-tag]');
   if (obTag) {
@@ -8879,7 +8915,15 @@ document.addEventListener('click', ev => {
         const breakEnd = document.getElementById('ob-break-end')?.value || null;
         state.settings.goal = { type: 'break', breakStart: todayStr(), breakEnd: breakEnd, setAt: todayStr() };
       } else if (intent === 'quit') {
-        state.settings.goal = { type: 'break', breakStart: todayStr(), breakEnd: null, setAt: todayStr() };
+        // v6.0.7: Respect "already X days clean" backdating from onboarding
+        const customDays = parseInt(document.getElementById('ob-quit-days-custom')?.value, 10);
+        const daysIn = Number.isFinite(customDays) && customDays >= 0 ? customDays : (state._obQuitDaysIn || 0);
+        let breakStart = todayStr();
+        if (daysIn > 0) {
+          const start = new Date(); start.setDate(start.getDate() - daysIn);
+          breakStart = localDateStr(start);
+        }
+        state.settings.goal = { type: 'break', breakStart, breakEnd: null, setAt: todayStr() };
       }
       // track intent → no goal
       state.obStep = 4; renderOnboarding(); return;
@@ -8888,7 +8932,7 @@ document.addEventListener('click', ev => {
     if (state.obStep === 4) {
       state.settings.onboardingDone = true; state.obStep = 0;
       delete state._obKnowsStrength; delete state._obGoalUnit; delete state._obCurrentGrams; delete state._obStrengthPct;
-      delete state._obSelectedPreset; delete state._obAutoTarget; delete state._obGoalType; delete state._obBudget; delete state._obReduceMode;
+      delete state._obSelectedPreset; delete state._obAutoTarget; delete state._obGoalType; delete state._obBudget; delete state._obReduceMode; delete state._obQuitDaysIn;
       delete state._obBreakEnd; delete state._obBreakOpen; delete state._obMethods; delete state._obCartPuffs;
       delete state._obOilMl; delete state._obOilStrength; delete state._obPrice; delete state._obIntent;
       delete state._obWhyNote; delete state._obWeeklyPct; delete state._obMotivations; delete state._obShowNotSure; delete state._obPrevStep; delete state._obPrevStep;
@@ -9422,12 +9466,13 @@ document.addEventListener('input', ev => {
     || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h);
   if (!isLocalNetwork && !stickyDev) return;
   const TEST_USERS = [
-    { key: 'jordan', label: 'Jordan (live data)', icon: '\ud83e\uddd1', href: '/latest/v6/leef-v6.0.html' },
-    { key: 'fresh', label: 'Fresh / new user', icon: '\u2728', href: '/latest/v6/leef-v6.0-new-user-test.html?user=fresh' },
-    { key: 'quit', label: 'Quit', icon: '\ud83d\udeab', href: '/latest/v6/leef-v6.0-new-user-test.html?user=quit' },
-    { key: 'reduce', label: 'Reduce', icon: '\ud83d\udcc9', href: '/latest/v6/leef-v6.0-new-user-test.html?user=reduce' },
-    { key: 'budget', label: 'Budget', icon: '\ud83d\udcb0', href: '/latest/v6/leef-v6.0-new-user-test.html?user=budget' },
-    { key: 'track', label: 'Just tracking', icon: '\ud83d\udcca', href: '/latest/v6/leef-v6.0-new-user-test.html?user=track' }
+    // v6.0.7: relative paths — work on localhost dev AND hosted preview
+    { key: 'jordan', label: 'Jordan (live data)', icon: '\ud83e\uddd1', href: 'leef-v6.0.html' },
+    { key: 'fresh', label: 'Fresh / new user', icon: '\u2728', href: 'leef-v6.0-new-user-test.html?user=fresh' },
+    { key: 'quit', label: 'Quit', icon: '\ud83d\udeab', href: 'leef-v6.0-new-user-test.html?user=quit' },
+    { key: 'reduce', label: 'Reduce', icon: '\ud83d\udcc9', href: 'leef-v6.0-new-user-test.html?user=reduce' },
+    { key: 'budget', label: 'Budget', icon: '\ud83d\udcb0', href: 'leef-v6.0-new-user-test.html?user=budget' },
+    { key: 'track', label: 'Just tracking', icon: '\ud83d\udcca', href: 'leef-v6.0-new-user-test.html?user=track' }
   ];
   function buildDevPanel() {
     const wrap = document.createElement('div');
@@ -9459,7 +9504,7 @@ document.addEventListener('input', ev => {
     sep.style.cssText = 'height:1px;background:rgba(255,255,255,.1);margin:5px 8px';
     menu.appendChild(sep);
     const landingItem = document.createElement('a');
-    landingItem.href = '/latest/index.html';
+    landingItem.href = '../index.html';
     landingItem.style.cssText = 'display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:rgba(255,255,255,.6);text-decoration:none;cursor:pointer;transition:background .12s;-webkit-tap-highlight-color:transparent';
     landingItem.innerHTML = '<span style="font-size:14px;width:18px;text-align:center">\u2190</span><span>Dev landing</span>';
     landingItem.onmouseenter = () => landingItem.style.background = 'rgba(255,255,255,.06)';
