@@ -9341,28 +9341,15 @@ document.addEventListener('input', ev => {
 //   - Localstorage flag 'leef_dev_mode' is set to 'on' (use ?dev=0 to disable)
 // ═══════════════════════════════════════════════════════════
 (function() {
-  // Sticky dev mode toggle via URL param
-  const urlParams = new URLSearchParams(location.search);
-  if (urlParams.has('dev')) {
-    const v = urlParams.get('dev');
-    if (v === '0' || v === 'off' || v === 'false') localStorage.removeItem('leef_dev_mode');
-    else localStorage.setItem('leef_dev_mode', 'on');
-  }
-  const stickyDev = localStorage.getItem('leef_dev_mode') === 'on';
-  // Common private network ranges
-  const h = location.hostname;
-  const isLocalNetwork = h === 'localhost' || h === '127.0.0.1'
-    || h.startsWith('192.168.')
-    || h.startsWith('10.')
-    || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h);
-  if (!isLocalNetwork && !stickyDev) return;
+  // v6.0.6 dist: dev panel always on (this is the shared preview build)
+  const stickyDev = true;
   const TEST_USERS = [
-    { key: 'jordan', label: 'Jordan (live data)', icon: '\ud83e\uddd1', href: '/latest/v6/leef-v6.0.html' },
-    { key: 'fresh', label: 'Fresh / new user', icon: '\u2728', href: '/latest/v6/leef-v6.0-new-user-test.html?user=fresh' },
-    { key: 'quit', label: 'Quit', icon: '\ud83d\udeab', href: '/latest/v6/leef-v6.0-new-user-test.html?user=quit' },
-    { key: 'reduce', label: 'Reduce', icon: '\ud83d\udcc9', href: '/latest/v6/leef-v6.0-new-user-test.html?user=reduce' },
-    { key: 'budget', label: 'Budget', icon: '\ud83d\udcb0', href: '/latest/v6/leef-v6.0-new-user-test.html?user=budget' },
-    { key: 'track', label: 'Just tracking', icon: '\ud83d\udcca', href: '/latest/v6/leef-v6.0-new-user-test.html?user=track' }
+    { key: 'jordan', label: 'Jordan (live data)', icon: '\ud83e\uddd1', href: 'leef-v6.0.html' },
+    { key: 'fresh', label: 'Fresh / new user', icon: '\u2728', href: 'leef-v6.0-new-user-test.html?user=fresh' },
+    { key: 'quit', label: 'Quit', icon: '\ud83d\udeab', href: 'leef-v6.0-new-user-test.html?user=quit' },
+    { key: 'reduce', label: 'Reduce', icon: '\ud83d\udcc9', href: 'leef-v6.0-new-user-test.html?user=reduce' },
+    { key: 'budget', label: 'Budget', icon: '\ud83d\udcb0', href: 'leef-v6.0-new-user-test.html?user=budget' },
+    { key: 'track', label: 'Just tracking', icon: '\ud83d\udcca', href: 'leef-v6.0-new-user-test.html?user=track' }
   ];
   function buildDevPanel() {
     const wrap = document.createElement('div');
@@ -9394,7 +9381,7 @@ document.addEventListener('input', ev => {
     sep.style.cssText = 'height:1px;background:rgba(255,255,255,.1);margin:5px 8px';
     menu.appendChild(sep);
     const landingItem = document.createElement('a');
-    landingItem.href = '/latest/index.html';
+    landingItem.href = '../index.html';
     landingItem.style.cssText = 'display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:rgba(255,255,255,.6);text-decoration:none;cursor:pointer;transition:background .12s;-webkit-tap-highlight-color:transparent';
     landingItem.innerHTML = '<span style="font-size:14px;width:18px;text-align:center">\u2190</span><span>Dev landing</span>';
     landingItem.onmouseenter = () => landingItem.style.background = 'rgba(255,255,255,.06)';
