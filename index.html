@@ -181,6 +181,16 @@ const pwInput = document.getElementById('pw');
 const btn = document.getElementById('submit-btn');
 const err = document.getElementById('err');
 
+function showError(msg) {
+  btn.disabled = false;
+  btn.textContent = 'Unlock';
+  err.textContent = msg;
+  err.classList.add('show');
+  pwInput.classList.add('wrong');
+  pwInput.select();
+  setTimeout(() => pwInput.classList.remove('wrong'), 500);
+}
+
 form.addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const pw = pwInput.value.trim();
@@ -189,27 +199,41 @@ form.addEventListener('submit', async (ev) => {
   btn.textContent = 'Unlocking…';
   err.classList.remove('show');
   pwInput.classList.remove('wrong');
+
+  // v6.0.8: split error paths so genuinely-wrong-password is distinguishable from
+  // network failure and private-browsing localStorage blocks
+
+  // Step 1: fetch the verify token
+  let encBlob;
   try {
-    // Fetch and decrypt the verify token
-    const encBlob = await fetch('v6/verify-token.enc').then(r => r.text());
-    const plain = await decrypt(pw, encBlob);
-    if (plain !== 'leef_unlock_ok_v607') throw new Error('bad token');
-    // Success — store password + expiry, redirect
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-    localStorage.setItem('leef_unlock', JSON.stringify({
-      pw: pw,
-      expires: Date.now() + SEVEN_DAYS_MS
-    }));
-    location.replace('app.html');
-  } catch (e) {
-    btn.disabled = false;
-    btn.textContent = 'Unlock';
-    err.textContent = 'Wrong password — try again';
-    err.classList.add('show');
-    pwInput.classList.add('wrong');
-    pwInput.select();
-    setTimeout(() => pwInput.classList.remove('wrong'), 500);
+    const resp = await fetch('v6/verify-token.enc');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    encBlob = await resp.text();
+  } catch (netErr) {
+    showError('Network error — check your connection and try again.');
+    return;
   }
+
+  // Step 2: decrypt + verify — a throw here genuinely means wrong password
+  let plain;
+  try {
+    plain = await decrypt(pw, encBlob);
+    if (plain !== 'leef_unlock_ok_v607') throw new Error('bad token');
+  } catch (cryptoErr) {
+    showError('Wrong password — try again');
+    return;
+  }
+
+  // Step 3: store the session — if localStorage is blocked (private browsing), tell the user exactly that
+  try {
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    localStorage.setItem('leef_unlock', JSON.stringify({ pw, expires: Date.now() + SEVEN_DAYS_MS }));
+  } catch (storageErr) {
+    showError("Your browser is blocking storage (private mode?). Open this link in a normal window.");
+    return;
+  }
+
+  location.replace('app.html');
 });
 </script>
 
