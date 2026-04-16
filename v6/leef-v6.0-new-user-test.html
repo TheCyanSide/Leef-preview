@@ -9578,7 +9578,9 @@ document.addEventListener('input', ev => {
   if (!preset) return; // no preset requested — leave localStorage alone
   if (preset === 'fresh') {
     // Fresh user = clear localStorage so onboarding starts from scratch
+    // v6.0.12: also clear the preset marker so switching back to quit/reduce/etc reseeds
     localStorage.removeItem('taper_app_test');
+    localStorage.removeItem('taper_app_test__preset');
     return;
   }
   // Skip reseeding if the same preset is already loaded (marker in localStorage)
