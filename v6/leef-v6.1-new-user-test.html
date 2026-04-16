@@ -1537,7 +1537,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app_test';
-const VERSION = '6.1.1';
+const VERSION = '6.1.2';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -2764,30 +2764,65 @@ function backfillMilestones() {
 
 function showConfetti(container, opts) {
   const o = opts || {};
-  const count = o.count || 25;
+  const count = o.count || 35;
   const fullscreen = o.fullscreen || false;
-  const colors = ['#4a9e72','#e0a030','#4d9de0','#e06840','#8f88e8','#FFD700'];
+  // v6.1.2: extended palette with brand + accent colors for richer feel
+  const colors = [
+    '#2d6a4f', '#4ca37a', '#4dca8b',  // greens (brand)
+    '#e0a030', '#f0b240', '#c17f24',  // ambers / golds
+    '#4d9de0', '#6db4ee', '#2462a4',  // blues
+    '#e06840', '#f08768',             // corals
+    '#8f88e8', '#ad9ff5',             // purples
+    '#FFD700', '#ffffff'              // gold + white sparkle
+  ];
   // For fullscreen, create a top-layer container
   let layer = container;
   if (fullscreen) {
     layer = document.createElement('div');
     layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1000;overflow:hidden';
     document.body.appendChild(layer);
-    setTimeout(() => layer.remove(), 2400);
+    setTimeout(() => layer.remove(), 2800);
+  }
+  // Ensure the host container is a positioning parent
+  if (!fullscreen && container) {
+    const cs = getComputedStyle(container);
+    if (cs.position === 'static') container.style.position = 'relative';
   }
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
-    const size = 5 + Math.random() * 7;
-    const startLeft = fullscreen ? 20 + Math.random() * 60 : 30 + Math.random() * 40;
-    const startTop = fullscreen ? 10 + Math.random() * 15 : 20 + Math.random() * 20;
-    el.style.cssText = `position:absolute;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};left:${startLeft}%;top:${startTop}%;pointer-events:none;z-index:1;`;
+    // Varied particle: mostly squares (confetti) with some circles (dots) and a few gold flecks
+    const size = 4 + Math.random() * 8;
+    const isCircle = Math.random() < .35;
+    const isSparkle = Math.random() < .1;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    // Emit from a central "burst point"
+    const startLeft = fullscreen ? 50 + (Math.random() - .5) * 20 : 50 + (Math.random() - .5) * 30;
+    const startTop = fullscreen ? 35 + (Math.random() - .5) * 10 : 40 + (Math.random() - .5) * 15;
+    const radius = isCircle ? '50%' : (isSparkle ? '1px' : '2px');
+    const shadow = isSparkle ? `0 0 6px ${color}` : `0 1px 3px rgba(0,0,0,.15)`;
+    el.style.cssText = `position:absolute;width:${size}px;height:${size}px;background:${color};border-radius:${radius};left:${startLeft}%;top:${startTop}%;pointer-events:none;z-index:1;box-shadow:${shadow};will-change:transform,opacity`;
     layer.appendChild(el);
-    const riseHeight = fullscreen ? 120 + Math.random() * 80 : 60 + Math.random() * 40;
+    // Initial radial velocity, then gravity arc
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = fullscreen ? 90 + Math.random() * 140 : 50 + Math.random() * 80;
+    const vx = Math.cos(angle) * velocity;
+    const vyInitial = Math.sin(angle) * velocity - (fullscreen ? 120 : 70); // extra upward bias
+    const gravity = fullscreen ? 180 : 130;
+    const dur = fullscreen ? 1800 + Math.random() * 900 : 1100 + Math.random() * 600;
+    // Three-stage arc: launch, peak, fall with fade
+    const peakFrac = 0.35;
+    const peakX = vx * peakFrac;
+    const peakY = vyInitial * peakFrac + .5 * gravity * peakFrac * peakFrac;
+    const endX = vx;
+    const endY = vyInitial + .5 * gravity;
+    const spin = (Math.random() - .5) * 960;
+    const tumble = (Math.random() - .5) * 540;
     el.animate([
-      { opacity: 1, transform: 'translateY(0) rotate(0deg)' },
-      { opacity: 0, transform: `translateY(-${riseHeight}px) translateX(${(Math.random()-.5)*100}px) rotate(${Math.random()*720}deg)` }
-    ], { duration: fullscreen ? 1400 + Math.random() * 600 : 800 + Math.random() * 400, easing: 'ease-out', fill: 'forwards', delay: Math.random() * 300 });
-    setTimeout(() => el.remove(), fullscreen ? 2200 : 1400);
+      { opacity: 1, transform: `translate(0,0) rotate3d(1,1,0,0deg)` },
+      { opacity: 1, transform: `translate(${peakX.toFixed(1)}px, ${peakY.toFixed(1)}px) rotate3d(1,1,0,${(spin * peakFrac).toFixed(0)}deg)`, offset: peakFrac },
+      { opacity: 0, transform: `translate(${endX.toFixed(1)}px, ${endY.toFixed(1)}px) rotate3d(1,1,0,${spin.toFixed(0)}deg) rotateX(${tumble.toFixed(0)}deg)` }
+    ], { duration: dur, easing: 'cubic-bezier(.2, .6, .4, 1)', fill: 'forwards', delay: Math.random() * 250 });
+    setTimeout(() => el.remove(), dur + 300);
   }
 }
 
@@ -2811,10 +2846,11 @@ function showMilestone(id) {
   backdrop.classList.add('show');
   haptic(isBig ? 30 : 15);
   setTimeout(() => {
-    showConfetti(popup);
+    showConfetti(popup, { count: isBig ? 50 : 35 });
     if (isBig) {
-      // Extra fullscreen burst for big wins
-      showConfetti(null, { fullscreen: true, count: 50 });
+      // v6.1.2: layered burst for big wins — initial + delayed second wave
+      showConfetti(null, { fullscreen: true, count: 90 });
+      setTimeout(() => showConfetti(null, { fullscreen: true, count: 60 }), 350);
     }
   }, 200);
 }
@@ -4210,6 +4246,65 @@ function renderDash(s) {
     const _statTiles = [avgMood != null, avgSleep != null, cleanThisWeek > 0, weekSpend > 0].filter(Boolean).length;
     const _gridCols = _statTiles >= 3 ? 3 : (_statTiles >= 1 ? 2 : 2);
 
+    // v6.1.2: tiny sparkline for metric tiles — shows 7-day trend at a glance
+    const _moodSeries = last7.map(x => x.mood != null ? x.mood : null);
+    const _sleepSeries = last7.map(x => x.sleep != null ? x.sleep : null);
+    const _cleanSeries = last7.map(x => isZeroDay(x) ? 1 : 0);
+    const _spendSeries = last7.map(x => x.purchase || 0);
+    function _miniSpark(series, color, opts) {
+      const sw = (opts && opts.w) || 56;
+      const sh = (opts && opts.h) || 18;
+      // Need at least 2 non-null points for a line
+      const validVals = series.filter(v => v != null);
+      if (validVals.length < 2) return '';
+      // Fixed range for mood/sleep (1–5), data range otherwise
+      const fixedMax = (opts && opts.fixedMax);
+      const fixedMin = (opts && opts.fixedMin);
+      let max, min;
+      if (fixedMax != null) { max = fixedMax; min = fixedMin || 0; }
+      else {
+        const nonNull = series.map(v => v != null ? v : 0);
+        max = Math.max(...nonNull);
+        min = Math.min(...nonNull);
+      }
+      const range = max - min || 1;
+      const pad = 2;
+      const w = sw - pad * 2;
+      const h = sh - pad * 2;
+      // Build polyline pts, dropping nulls (creates gaps)
+      let pathSegs = [];
+      let curSeg = [];
+      series.forEach((v, i) => {
+        if (v == null) {
+          if (curSeg.length >= 2) pathSegs.push(curSeg);
+          curSeg = [];
+          return;
+        }
+        const x = pad + (i / (series.length - 1)) * w;
+        const y = pad + h - ((v - min) / range) * h;
+        curSeg.push(x.toFixed(1) + ',' + y.toFixed(1));
+      });
+      if (curSeg.length >= 2) pathSegs.push(curSeg);
+      if (pathSegs.length === 0) return '';
+      const lines = pathSegs.map(seg =>
+        `<polyline points="${seg.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>`
+      ).join('');
+      // Last point dot
+      const lastValIdx = series.lastIndexOf(series.filter(v => v != null).slice(-1)[0]);
+      let dot = '';
+      if (lastValIdx >= 0) {
+        const lx = pad + (lastValIdx / (series.length - 1)) * w;
+        const ly = pad + h - ((series[lastValIdx] - min) / range) * h;
+        dot = `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2" fill="${color}"/>`;
+      }
+      return `<svg width="${sw}" height="${sh}" viewBox="0 0 ${sw} ${sh}" style="display:block;margin-top:5px">${lines}${dot}</svg>`;
+    }
+    // Generate sparkline HTML strings for each metric (only if there's enough data)
+    const _moodSpark  = avgMood != null ? _miniSpark(_moodSeries, 'var(--teal)', { fixedMin: 1, fixedMax: 5 }) : '';
+    const _sleepSpark = avgSleep != null ? _miniSpark(_sleepSeries, 'var(--blue)', { fixedMin: 1, fixedMax: 5 }) : '';
+    const _cleanSpark = cleanThisWeek > 0 ? _miniSpark(_cleanSeries, 'var(--accent)', { fixedMin: 0, fixedMax: 1 }) : '';
+    const _spendSpark = weekSpend > 0 ? _miniSpark(_spendSeries, 'var(--amber)') : '';
+
     weeklyDigestHtml = `<div class="card cp" id="weekly-digest" style="background:var(--card);border:1px solid rgba(143,136,232,.2);box-shadow:0 4px 24px rgba(143,136,232,.1), 0 1px 3px rgba(0,0,0,.04);position:relative;animation:fadeUp .55s cubic-bezier(.22,1,.36,1);overflow:hidden">
       <button id="digest-dismiss" aria-label="Dismiss weekly digest" style="position:absolute;top:4px;right:4px;background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;line-height:1;z-index:1">\u2715</button>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-right:36px">
@@ -4235,10 +4330,10 @@ function renderDash(s) {
         </div>
       </div>`}
       ${_statTiles > 0 ? `<div style="display:grid;grid-template-columns:repeat(${_gridCols},1fr);gap:6px;margin-bottom:${highlightText ? '12' : '0'}px">
-        ${avgMood != null ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Mood</div><div style="font-size:17px;font-weight:800;color:var(--teal);margin-top:3px;line-height:1">${avgMood}<span style="font-size:10px;font-weight:500;color:var(--t3)">/5</span></div></div>` : ''}
-        ${avgSleep != null ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Sleep</div><div style="font-size:17px;font-weight:800;color:var(--blue);margin-top:3px;line-height:1">${avgSleep}<span style="font-size:10px;font-weight:500;color:var(--t3)">/5</span></div></div>` : ''}
-        ${cleanThisWeek > 0 ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Clean</div><div style="font-size:17px;font-weight:800;color:var(--accent);margin-top:3px;line-height:1">${cleanThisWeek}<span style="font-size:10px;font-weight:500;color:var(--t3)">/7</span></div></div>` : ''}
-        ${weekSpend > 0 ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Spent</div><div style="font-size:17px;font-weight:800;color:var(--amber);margin-top:3px;line-height:1">${cur}${weekSpend}</div></div>` : ''}
+        ${avgMood != null ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Mood</div><div style="font-size:17px;font-weight:800;color:var(--teal);margin-top:3px;line-height:1">${avgMood}<span style="font-size:10px;font-weight:500;color:var(--t3)">/5</span></div>${_moodSpark}</div>` : ''}
+        ${avgSleep != null ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Sleep</div><div style="font-size:17px;font-weight:800;color:var(--blue);margin-top:3px;line-height:1">${avgSleep}<span style="font-size:10px;font-weight:500;color:var(--t3)">/5</span></div>${_sleepSpark}</div>` : ''}
+        ${cleanThisWeek > 0 ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Clean</div><div style="font-size:17px;font-weight:800;color:var(--accent);margin-top:3px;line-height:1">${cleanThisWeek}<span style="font-size:10px;font-weight:500;color:var(--t3)">/7</span></div>${_cleanSpark}</div>` : ''}
+        ${weekSpend > 0 ? `<div style="padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--glass-border)"><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Spent</div><div style="font-size:17px;font-weight:800;color:var(--amber);margin-top:3px;line-height:1">${cur}${weekSpend}</div>${_spendSpark}</div>` : ''}
       </div>` : ''}
       ${highlightText ? `<div style="display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:10px;background:linear-gradient(135deg, rgba(143,136,232,.06) 0%, rgba(74,158,114,.04) 100%);border:1px solid rgba(143,136,232,.1)"><span style="font-size:12px;flex-shrink:0">\u2728</span><span style="font-size:12px;font-weight:500;color:var(--t2);line-height:1.3">${highlightText}</span></div>` : ''}
     </div>`;
