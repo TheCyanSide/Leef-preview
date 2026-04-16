@@ -280,6 +280,41 @@ header {
   50% { background-position: 100% 50%; }
 }
 .hdr-sub { font-size: 14px; color: var(--t2); margin-top: 4px; font-weight: 500; letter-spacing: -.005em; }
+/* v6.1.1: time-of-day greeting above subtitle (dashboard only) */
+.hdr-greeting {
+  font-size: 12px; color: var(--t3); font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; margin-top: 6px;
+  display: none; opacity: 0; transition: opacity .35s ease;
+}
+.hdr-greeting.show { display: block; opacity: 1; animation: fadeUp .45s var(--ease-out, ease) both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.hdr-greeting .greet-icon { margin-right: 5px; opacity: .85; }
+/* v6.1.1: persistent hero chip — fixed-position, appears when scrolled past hero */
+.hdr-chip {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 0px), 12px);
+  right: 14px;
+  z-index: 95;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 999px;
+  background: var(--glass); color: var(--accent);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 4px 14px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04), inset 0 1px 0 var(--glass-glow);
+  font-size: 12px; font-weight: 700; letter-spacing: -.005em;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: inherit;
+  transform: translateY(-12px) scale(.9); opacity: 0; pointer-events: none;
+  transition: transform .35s var(--ease-out, ease), opacity .35s var(--ease-out, ease);
+  white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+}
+.hdr-chip.show { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+.hdr-chip:active { transform: translateY(1px) scale(.96); }
+.hdr-chip .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: chipPulse 2s ease-in-out infinite; flex-shrink: 0; }
+@keyframes chipPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.85); } }
+[data-theme="dark"] .hdr-chip { box-shadow: 0 4px 14px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); }
+/* v6.1.1: enhance the existing tab transitions — softer easing + slight scale for premium feel */
+main[data-tab-dir] { will-change: transform, opacity; }
 /* v3.3.1: subtle leaf icon float next to the wordmark */
 .hdr-title + svg { animation: leafFloat 4s ease-in-out infinite; transform-origin: bottom center; }
 @keyframes leafFloat {
@@ -323,15 +358,15 @@ main { flex: 1; padding: 8px 16px calc(70px + env(safe-area-inset-bottom)); anim
   to   { opacity: 1; transform: translateY(0); }
 }
 /* v3.3.1: directional tab slide variants */
-main[data-tab-dir="left"] { animation: tabSlideLeft .35s cubic-bezier(.22,1,.36,1); }
-main[data-tab-dir="right"] { animation: tabSlideRight .35s cubic-bezier(.22,1,.36,1); }
+main[data-tab-dir="left"] { animation: tabSlideLeft .42s cubic-bezier(.22,1,.36,1) both; }
+main[data-tab-dir="right"] { animation: tabSlideRight .42s cubic-bezier(.22,1,.36,1) both; }
 @keyframes tabSlideLeft {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translate3d(28px, 0, 0) scale(.985); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 @keyframes tabSlideRight {
-  from { opacity: 0; transform: translateX(-20px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translate3d(-28px, 0, 0) scale(.985); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 
 nav {
@@ -389,6 +424,15 @@ nav {
   margin-bottom: 18px; overflow: hidden;
   box-shadow: var(--glass-sh), inset 0 1px 0 var(--glass-glow);
   transition: transform var(--dur-fast, 150ms) var(--ease-out, ease-out), box-shadow var(--dur-fast, 150ms) var(--ease-out, ease-out);
+}
+/* v6.1.1: tactile press feedback for tappable cards */
+.card.cp:active, .hero-card:active, [data-hero-expand]:active > .hero-card, [id="goal-card-tap"]:active {
+  transform: translateY(1px) scale(.995);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04), inset 0 1px 0 var(--glass-glow);
+  transition: transform 100ms var(--ease-soft, ease), box-shadow 100ms var(--ease-soft, ease);
+}
+[data-theme="dark"] .card.cp:active, [data-theme="dark"] .hero-card:active {
+  box-shadow: 0 1px 4px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
 }
 
 .hero-card {
@@ -1433,9 +1477,11 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
           <svg width="22" height="22" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:4px" aria-hidden="true"><defs><linearGradient id="leaf-g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--teal)"/></linearGradient></defs><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3 8 0 11-7.34 11-13-1-.01-4.58.34-6 .67 2 2 4 4 3.33 7.34" fill="url(#leaf-g)" opacity=".85"/></svg>
         </div>
         <div class="hdr-sub" id="hdr-sub"></div>
+        <div class="hdr-greeting" id="hdr-greeting"></div>
       </div>
       <div style="display:flex;align-items:center;gap:4px">
         <div id="hdr-hero" style="text-align:right;padding-top:2px"></div>
+        <button type="button" class="hdr-chip" id="hdr-chip" aria-label="Back to top" style="margin-top:4px"></button>
       </div>
     </div>
   </header>
@@ -1526,7 +1572,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app';
-const VERSION = '6.1.0';
+const VERSION = '6.1.1';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -3448,7 +3494,49 @@ function render() {
   if (state.tab === 'dashboard') {
     document.getElementById('hdr-sub').textContent = s.days < 2 ? 'Just getting started' : `${s.days} days tracked`;
     document.getElementById('hdr-hero').innerHTML = '';
+    // v6.1.1: time-of-day greeting
+    const greetEl = document.getElementById('hdr-greeting');
+    if (greetEl) {
+      const hr = new Date().getHours();
+      let greet, icon;
+      if (hr >= 5 && hr < 12)       { greet = 'Good morning';     icon = '\u2600\ufe0f'; }
+      else if (hr >= 12 && hr < 17) { greet = 'Good afternoon';   icon = '\ud83c\udf24\ufe0f'; }
+      else if (hr >= 17 && hr < 22) { greet = 'Good evening';     icon = '\ud83c\udf06'; }
+      else                          { greet = 'Quiet hours';      icon = '\ud83c\udf19'; }
+      greetEl.innerHTML = `<span class="greet-icon">${icon}</span>${greet}`;
+      greetEl.classList.add('show');
+    }
+    // v6.1.1: persistent header chip — content based on current path
+    const chipEl = document.getElementById('hdr-chip');
+    if (chipEl) {
+      const gp = (typeof goalProgress === 'function') ? goalProgress() : null;
+      let chipText = '';
+      if (gp && gp.type === 'reduce') {
+        const u = gp.unit || 'g';
+        const cur = u === 'mg' ? Math.round(gp.currentAvg) + 'mg' : gp.currentAvg.toFixed(1) + 'g';
+        const pct = Math.round(gp.progress * 100);
+        chipText = `${cur} \u00b7 ${pct}%`;
+      } else if (gp && gp.type === 'break') {
+        chipText = `${gp.daysClean || 0} days clean`;
+      } else if (gp && gp.type === 'budget') {
+        const cur = gp.currency || '\u00a3';
+        chipText = `${cur}${gp.spent}`;
+      } else if (s.days >= 1) {
+        // track / no-goal: show recent average
+        const avg = s.avg7mg || 0;
+        chipText = avg >= 1000 ? (avg/1000).toFixed(1) + 'g' : Math.round(avg) + 'mg';
+      }
+      if (chipText) {
+        chipEl.innerHTML = `<span class="chip-dot"></span>${chipText}`;
+      } else {
+        chipEl.innerHTML = '';
+      }
+    }
   } else {
+    const greetEl = document.getElementById('hdr-greeting');
+    if (greetEl) { greetEl.classList.remove('show'); }
+    const chipEl = document.getElementById('hdr-chip');
+    if (chipEl) { chipEl.classList.remove('show'); }
     document.getElementById('hdr-sub').textContent =
       state.tab === 'add' ? (state.editId ? 'Editing entry' : 'New entry') :
       state.tab === 'stats' ? 'Your data' :
@@ -4480,6 +4568,108 @@ function renderDash(s) {
   ct.querySelectorAll('.card, .hero-card').forEach((c, i) => {
     c.style.opacity = '0';
     c.style.animation = `fadeUp 0.4s ease-out ${i * 0.07}s forwards`;
+  });
+  // v6.1.1: count-up animation for hero numbers (goal-percent, large m-val, hero-style large numbers)
+  if (!state._heroTweenedOnce) {
+    state._heroTweenedOnce = true;
+    setTimeout(() => tweenHeroNumbers(ct), 80);
+  }
+}
+
+// v6.1.1: animate numeric content of an element from 0 → target over ~600ms.
+// Parses the leading number (supports decimals, currency prefix, %) and preserves the suffix.
+// Uses requestAnimationFrame with setTimeout fallback (rAF can be throttled in iframes).
+function tweenNumber(el, opts) {
+  if (!el) return;
+  const original = (opts && opts.text) ? opts.text : el.textContent;
+  const m = original.match(/^(\D*?)(-?\d+(?:[\.,]\d+)?)(.*)$/s);
+  if (!m) return;
+  const prefix = m[1];
+  const targetStr = m[2];
+  const suffix = m[3];
+  const target = parseFloat(targetStr.replace(',', '.'));
+  if (!isFinite(target)) return;
+  const decimals = (targetStr.split('.')[1] || targetStr.split(',')[1] || '').length;
+  const dur = (opts && opts.duration) ? opts.duration : 650;
+  const start = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
+  let raf = null, timer = null, lastFrame = start;
+  function frame() {
+    const now = performance.now();
+    const t = Math.min(1, (now - start) / dur);
+    const v = target * ease(t);
+    const formatted = decimals ? v.toFixed(decimals) : Math.round(v).toString();
+    el.textContent = prefix + formatted + suffix;
+    if (t < 1) {
+      // Use rAF if it's actually firing; fallback to setTimeout if rAF is being throttled
+      lastFrame = now;
+      raf = requestAnimationFrame(() => {
+        if (performance.now() - lastFrame < 200) frame();
+        else timer = setTimeout(frame, 16);
+      });
+      // Safety net: if rAF doesn't fire within 200ms, kick off setTimeout
+      timer = setTimeout(() => { if (raf) cancelAnimationFrame(raf); frame(); }, 200);
+    }
+  }
+  frame();
+}
+
+function tweenHeroNumbers(root) {
+  if (!root) return;
+  // 1. Goal percent (e.g., "89% there")
+  const gp = root.querySelector('.goal-percent');
+  if (gp && /^\d/.test(gp.textContent.trim())) tweenNumber(gp, { duration: 700 });
+  // 2. Ring value inside SVG (e.g., "0.6g")
+  const rv = root.querySelector('.ring-value');
+  if (rv && /^\d/.test(rv.textContent.trim())) {
+    // SVG text doesn't support .textContent the same way — we replace text
+    const original = rv.textContent;
+    const m = original.match(/^(\D*?)(-?\d+(?:\.\d+)?)(.*)$/);
+    if (m) {
+      const prefix = m[1], target = parseFloat(m[2]), suffix = m[3];
+      const decimals = (m[2].split('.')[1] || '').length;
+      const start = performance.now(); const dur = 700;
+      const ease = (t) => 1 - Math.pow(1 - t, 3);
+      function frame(now) {
+        const t = Math.min(1, (now - start) / dur);
+        const v = target * ease(t);
+        rv.textContent = prefix + (decimals ? v.toFixed(decimals) : Math.round(v)) + suffix;
+        if (t < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+  }
+  // 3. Top-of-hero big numbers (find inline-styled large numbers in hero-card — e.g., "14", "£55", "60mg")
+  root.querySelectorAll('.hero-card div').forEach(d => {
+    const fs = d.style.fontSize;
+    if (!fs) return;
+    const px = parseInt(fs);
+    if (px >= 40 && /^\D*?\d/.test(d.textContent.trim()) && d.children.length === 0) {
+      tweenNumber(d, { duration: 700 });
+    }
+    // Also handle numbers with inline-styled child spans (like "14<span>days</span>")
+    if (px >= 40 && d.children.length === 1 && d.firstChild && d.firstChild.nodeType === 3) {
+      // first node is text, second is the span/unit
+      const txtNode = d.firstChild;
+      const childSpan = d.children[0];
+      const text = txtNode.nodeValue.trim();
+      if (/^-?\d+(?:\.\d+)?$/.test(text.replace(/[\u00a3$\u20ac]/, ''))) {
+        const m = text.match(/^(\D*?)(-?\d+(?:\.\d+)?)$/);
+        if (m) {
+          const prefix = m[1], target = parseFloat(m[2]);
+          const decimals = (m[2].split('.')[1] || '').length;
+          const start = performance.now(); const dur = 700;
+          const ease = (t) => 1 - Math.pow(1 - t, 3);
+          function frame(now) {
+            const t = Math.min(1, (now - start) / dur);
+            const v = target * ease(t);
+            txtNode.nodeValue = prefix + (decimals ? v.toFixed(decimals) : Math.round(v));
+            if (t < 1) requestAnimationFrame(frame);
+          }
+          requestAnimationFrame(frame);
+        }
+      }
+    }
   });
 }
 
@@ -9825,6 +10015,35 @@ document.addEventListener('input', ev => {
     }
     startY = 0; currentY = 0;
   }, { passive: true });
+})();
+
+// v6.1.1: persistent header chip — show when scrolled past threshold
+(function setupHdrChip() {
+  let lastVisible = false;
+  let ticking = false;
+  function check() {
+    ticking = false;
+    const chip = document.getElementById('hdr-chip');
+    if (!chip || !chip.innerHTML.trim() || state.tab !== 'dashboard') {
+      if (chip) chip.classList.remove('show');
+      return;
+    }
+    const visible = window.scrollY > 220;
+    if (visible !== lastVisible) {
+      chip.classList.toggle('show', visible);
+      lastVisible = visible;
+    }
+  }
+  window.addEventListener('scroll', () => {
+    if (!ticking) { requestAnimationFrame(check); ticking = true; setTimeout(check, 150); }
+  }, { passive: true });
+  // Click to scroll back to top
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && (t.id === 'hdr-chip' || (t.closest && t.closest('#hdr-chip')))) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
 })();
 </script>
 </body>
