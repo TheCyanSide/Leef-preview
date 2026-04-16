@@ -838,8 +838,23 @@ nav {
   60% { opacity: 1; }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
-.ob-title { font-size: 32px; font-weight: 800; margin-bottom: 8px; letter-spacing: -.5px; animation: obSlideUp .5s cubic-bezier(.22,1,.36,1) .08s both; }
-.ob-desc { font-size: 15px; color: var(--t2); line-height: 1.5; margin-bottom: 32px; max-width: 300px; animation: obSlideUp .5s cubic-bezier(.22,1,.36,1) .15s both; }
+.ob-title {
+  font-size: 32px; font-weight: 800; margin-bottom: 8px;
+  letter-spacing: -.025em; line-height: 1.15;
+  /* v6.1.3: cap width so the title can't stretch edge-to-edge on wide viewports */
+  max-width: 360px; width: 100%;
+  animation: obSlideUp .5s cubic-bezier(.22,1,.36,1) .08s both;
+}
+.ob-desc {
+  font-size: 15px; color: var(--t2); line-height: 1.5; margin-bottom: 32px;
+  max-width: 340px; width: 100%;
+  animation: obSlideUp .5s cubic-bezier(.22,1,.36,1) .15s both;
+}
+/* v6.1.3: responsive — shrink title on narrow phones so it doesn't wrap awkwardly */
+@media (max-width: 380px) {
+  .ob-title { font-size: 26px; letter-spacing: -.015em; }
+  .ob-desc { font-size: 14px; }
+}
 @keyframes obSlideUp {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
@@ -952,9 +967,11 @@ nav {
   animation: popIn .5s cubic-bezier(.34,1.56,.64,1);
 }
 .milestone-popup.hidden { display: none; }
+/* v6.1.3: cap milestone popup max-width so it doesn't stretch on wide viewports */
+.milestone-popup { max-width: min(360px, calc(100vw - 48px)); }
 .ms-icon { font-size: 56px; margin-bottom: 12px; }
-.ms-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-.ms-desc { font-size: 14px; color: var(--t2); margin-bottom: 20px; line-height: 1.4; }
+.ms-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; max-width: 300px; }
+.ms-desc { font-size: 14px; color: var(--t2); margin-bottom: 20px; line-height: 1.4; max-width: 300px; }
 
 /* ═══════════════════════════════════════════════════════════
    BUY ME A COFFEE
@@ -1405,7 +1422,9 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text; margin-bottom: 8px; line-height: 1.1;
 }
-.splash-subtitle { font-size: 17px; color: rgba(235,235,245,.55); font-weight: 400; letter-spacing: .2px; line-height: 1.4; }
+.splash-subtitle { font-size: 17px; color: rgba(235,235,245,.55); font-weight: 400; letter-spacing: .2px; line-height: 1.4; max-width: 320px; }
+/* v6.1.3: cap splash wordmark width on wide viewports so it doesn't stretch */
+.splash-title { max-width: 360px; }
 .splash-usp-title { font-size: 26px; font-weight: 800; letter-spacing: -.5px; color: #f0f0f5; margin-bottom: 32px; line-height: 1.2; max-width: 300px; }
 .splash-usp-list { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 320px; text-align: left; }
 .splash-usp-item {
@@ -1537,7 +1556,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app_test';
-const VERSION = '6.1.2';
+const VERSION = '6.1.3';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
