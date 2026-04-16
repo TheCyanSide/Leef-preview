@@ -1439,7 +1439,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
    CONFIGURATION & CONSTANTS
    ═══════════════════════════════════════════════════════════ */
 const APP_KEY = 'taper_app';
-const VERSION = '6.0.13';
+const VERSION = '6.0.14';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -3616,7 +3616,7 @@ function renderDash(s) {
       heroHtml = `<div class="hero-card" style="background:linear-gradient(145deg, rgba(30,176,122,.15) 0%, rgba(45,106,79,.05) 60%, transparent 100%)">
         <div style="font-size:12px;font-weight:500;color:var(--teal);margin-bottom:10px;letter-spacing:.5px;text-transform:uppercase">Clear and sober</div>
         <div style="font-size:64px;font-weight:800;color:var(--t1);line-height:1;letter-spacing:-2px">${gp.daysIn}<span style="font-size:22px;font-weight:500;letter-spacing:0"> days</span></div>
-        <div style="font-size:13px;color:var(--t2);margin-top:12px;font-style:italic;line-height:1.4;max-width:260px;margin-left:auto;margin-right:auto">${encourageMsg}</div>
+        <div style="font-size:13px;color:var(--t1);opacity:.75;margin-top:12px;font-style:italic;line-height:1.4;max-width:260px;margin-left:auto;margin-right:auto">${encourageMsg}</div>
         <button type="button" id="crisis-btn" style="margin:16px 0 0;padding:10px 20px;border-radius:var(--rs);border:1px solid var(--coral);background:rgba(208,80,50,.08);color:var(--coral);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px;-webkit-tap-highlight-color:transparent;transition:all .15s">\ud83d\udc9a Having a tough moment?</button>
       </div>`;
     } else {
