@@ -55,6 +55,15 @@
     max-width: 320px; margin: 0 auto;
   }
   .intro strong { color: var(--fg); font-weight: 600; }
+  .version {
+    display: inline-block;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    color: var(--teal, #4dca8b);
+    background: rgba(77,202,139,.1);
+    border: 1px solid rgba(77,202,139,.28);
+    padding: 4px 11px; border-radius: 999px;
+    margin-top: 4px;
+  }
   .section {
     font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
     text-transform: uppercase; color: var(--t3);
@@ -116,12 +125,12 @@
 <div class="wrap">
   <header>
     <h1>Leef</h1>
-    <p class="intro">A cannabis taper tracking app I've been building. Tap <strong>Jordan's version</strong> to see my live 115-day taper, or try any test user below to see how different paths feel. <strong>Now on v6.1</strong> — bigger typography, better contrast, refined polish throughout.</p>
+    <div class="version">v6.2.2</div>
   </header>
 
   <div class="section">My real data</div>
   <div class="grid">
-    <a class="card live" href="v6/leef-v6.1.html">
+    <a class="card live" href="v6/leef-v6.2.html">
       <div class="icon icon-jordan">🧑</div>
       <div class="body">
         <div class="label">Jordan's version</div>
@@ -133,7 +142,7 @@
 
   <div class="section">Fresh start</div>
   <div class="grid">
-    <a class="card" href="v6/leef-v6.1-new-user-test.html?user=fresh">
+    <a class="card" href="v6/leef-v6.2.html?user=fresh">
       <div class="icon icon-fresh">✨</div>
       <div class="body">
         <div class="label">New user</div>
@@ -145,7 +154,7 @@
 
   <div class="section">Test user paths</div>
   <div class="grid">
-    <a class="card" href="v6/leef-v6.1-new-user-test.html?user=quit">
+    <a class="card" href="v6/leef-v6.2.html?user=quit">
       <div class="icon icon-quit">🚫</div>
       <div class="body">
         <div class="label">Quit user</div>
@@ -153,7 +162,7 @@
       </div>
       <span class="badge badge-day">14d</span>
     </a>
-    <a class="card" href="v6/leef-v6.1-new-user-test.html?user=reduce">
+    <a class="card" href="v6/leef-v6.2.html?user=reduce">
       <div class="icon icon-reduce">📉</div>
       <div class="body">
         <div class="label">Reduce user</div>
@@ -161,7 +170,7 @@
       </div>
       <span class="badge badge-day">30d</span>
     </a>
-    <a class="card" href="v6/leef-v6.1-new-user-test.html?user=budget">
+    <a class="card" href="v6/leef-v6.2.html?user=budget">
       <div class="icon icon-budget">💰</div>
       <div class="body">
         <div class="label">Budget user</div>
@@ -169,7 +178,7 @@
       </div>
       <span class="badge badge-day">60d</span>
     </a>
-    <a class="card" href="v6/leef-v6.1-new-user-test.html?user=track">
+    <a class="card" href="v6/leef-v6.2.html?user=track">
       <div class="icon icon-track">📊</div>
       <div class="body">
         <div class="label">Just tracking</div>
@@ -179,21 +188,26 @@
     </a>
   </div>
 
-  <div class="section">Previous version (rollback)</div>
+  <div class="section">Previous versions (rollback)</div>
   <div class="grid">
-    <a class="card" href="v6/leef-v6.0.html" style="opacity:.78">
+    <a class="card" href="v6/leef-v6.1.html" style="opacity:.78">
+      <div class="icon icon-track">⏪</div>
+      <div class="body">
+        <div class="label">Jordan's version (v6.1.4)</div>
+        <div class="desc">Rollback to v6.1 if anything looks off in v6.2</div>
+      </div>
+      <span class="badge badge-day">v6.1</span>
+    </a>
+    <a class="card" href="v6/leef-v6.0.html" style="opacity:.68">
       <div class="icon icon-track">⏪</div>
       <div class="body">
         <div class="label">Jordan's version (v6.0.14)</div>
-        <div class="desc">Rollback to the previous release if anything looks off in v6.1</div>
+        <div class="desc">Deep rollback — pre-v6.1 polish</div>
       </div>
       <span class="badge badge-day">v6.0</span>
     </a>
   </div>
 
-  <div class="note">
-    <strong>Tip for your phone:</strong> Tap <strong>Jordan's version</strong> to see the real data, then use your phone's share button to "Add to Home Screen" — it becomes a proper app icon.
-  </div>
 </div>
 
 </body></html>
