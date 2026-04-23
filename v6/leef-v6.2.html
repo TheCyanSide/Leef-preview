@@ -1764,7 +1764,7 @@ const APP_KEY = (() => {
   return u ? ('taper_app_test_' + u) : 'taper_app';
 })();
 const PRESET_MARKER_KEY = APP_KEY + '__preset';
-const VERSION = '6.2.2';
+const VERSION = '6.2.3';
 const PAGE_SIZE = 25;
 const MS_PER_DAY = 864e5;
 
@@ -2715,6 +2715,19 @@ function loadData() {
         }
         // Re-save with current version
         if (data.v !== VERSION) saveData();
+        // v6.2.3: append-only SEED merge. When SEED has dates localStorage doesn't,
+        // add them. Never overwrites existing entries — preserves any on-device edits.
+        // Solves: "I pushed new data to Pages but phone still shows old entries".
+        if (APP_KEY === 'taper_app' && Array.isArray(SEED) && SEED.length > 0) {
+          const existingDates = new Set(state.entries.map(e => e.date));
+          const toAdd = SEED
+            .filter(s => s && s.date && !existingDates.has(s.date))
+            .map(s => ({ id: 'h_seed_' + s.date, ...s, mood: s.mood ?? null, sleep: s.sleep ?? null }));
+          if (toAdd.length > 0) {
+            state.entries = state.entries.concat(toAdd).sort((a, b) => a.date < b.date ? -1 : 1);
+            saveData();
+          }
+        }
         // v6.0.9 BUG-002: backfill milestones for users whose milestone array is empty
         // but who already have earned entries (from seed data or older versions).
         backfillMilestones();
